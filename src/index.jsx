@@ -12,7 +12,6 @@ import IconButton from 'material-ui/IconButton'
 import Drawer from 'material-ui/Drawer'
 import Divider from 'material-ui/Divider'
 import TextField from 'material-ui/TextField'
-import { LinearProgress } from 'material-ui/Progress'
 
 import Delete from 'material-ui-icons/Delete'
 import KeyboardArrowLeft from 'material-ui-icons/KeyboardArrowLeft'
@@ -568,9 +567,11 @@ class Main extends React.Component {
             { this.renderAppBar() }
             { this.renderDrawer() }
             { this.renderBody() }
-            <div className="progress">
-                <LinearProgress mode="determinate"
-                    value={ playingTrack.res ? playingTime * 100 / hhmmss2sec(playingTrack.res.duration || '') : 0 } />
+            <div className="progress" style={{ backgroundColor: albumartSwatches.Muted || '#eee' }}>
+                <div className="bar" style={{
+                    transform: `scaleX(${ playingTrack.res ? playingTime / hhmmss2sec(playingTrack.res.duration || '') : 0 })`,
+                    backgroundColor: albumartSwatches.DarkMuted || '#aaa',
+                }} />
             </div>
         </div>
     }
