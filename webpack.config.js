@@ -8,8 +8,6 @@ module.exports = {
         filename: 'bundle.js',
     },
     externals: {
-        'upnp-device-client': 'null',
-        'upnp-mediarenderer-client': 'null',
         'elementtree': 'null',
     },
     module: {
@@ -18,7 +16,10 @@ module.exports = {
             use: {
                 loader: 'babel-loader',
                 options: {
-                    presets: ['env', 'react', 'es2015', 'stage-0'],
+                    presets: [
+                        ['env', { targets: { node: 'current' } }],
+                        'react', 'es2015', 'stage-0'
+                    ],
                     plugins: [
                         'transform-class-properties',
                         'transform-es3-member-expression-literals',

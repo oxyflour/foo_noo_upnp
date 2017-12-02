@@ -19,9 +19,40 @@ body {
 }
 
 .drawer {
-    .header {
+    .player-bg {
+        width: 100%;
         height: 200px;
+        background-color: #ccc;
         background-size: cover;
         background-position: center;
+        z-index: -1;
     }
+    .player {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        width: 100%;
+        height: 200px;
+        background-color: rgba(250, 250, 250, 0.5);
+
+        .options {
+            position: absolute;
+            right: 0;
+            top: 0;
+        }
+
+        .control {
+            margin-left: 1em;
+            margin-right: 1em;
+        }
+    }
+}
+
+.progress {
+    position: fixed;
+    width: 100%;
+    bottom: 0;
+    left: 0;
+    z-index: 9999;
 }

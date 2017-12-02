@@ -12,8 +12,10 @@ import IconButton from 'material-ui/IconButton'
 import Drawer from 'material-ui/Drawer'
 import Divider from 'material-ui/Divider'
 import TextField from 'material-ui/TextField'
+import { LinearProgress } from 'material-ui/Progress'
 
 import Delete from 'material-ui-icons/Delete'
+import KeyboardArrowLeft from 'material-ui-icons/KeyboardArrowLeft'
 import Drafts from 'material-ui-icons/Drafts'
 import Mail from 'material-ui-icons/Mail'
 import Report from 'material-ui-icons/Report'
@@ -25,15 +27,20 @@ import Search from 'material-ui-icons/Search'
 import Close from 'material-ui-icons/Close'
 import LibraryMusic from 'material-ui-icons/LibraryMusic'
 import Phonelink from 'material-ui-icons/Phonelink'
-import Speaker from 'material-ui-icons/Speaker'
+import SurroundSound from 'material-ui-icons/SurroundSound'
+import SkipPrevious from 'material-ui-icons/SkipPrevious'
+import SkipNext from 'material-ui-icons/SkipNext'
+import PlayCircleOutline from 'material-ui-icons/PlayCircleOutline'
+import PauseCircleOutline from 'material-ui-icons/PauseCircleOutline'
+import PlaylistPlay from 'material-ui-icons/PlaylistPlay'
+import MoreVert from 'material-ui-icons/MoreVert'
 
 import { HashRouter, Route, Redirect, Switch } from 'react-router-dom'
 
 import './index.less'
 
-import Browser from '../components/Browser.jsx'
-import Player from '../components/Player.jsx'
 import Select from '../components/Select.jsx'
+import { default as Browser, getTitleMain } from '../components/Browser.jsx'
 import { qsSet, fetchJson, debounce, hhmmss2sec, cssStyleUrl, onChange } from '../common/utils'
 
 const SORT_DISPLAY_NAME = {
@@ -45,14 +52,13 @@ const SORT_DISPLAY_NAME = {
 function updateSortCriteria(sortCriteria, field) {
     const sortCriteriaArray = sortCriteria.split(',').filter(x => x),
         index = sortCriteriaArray.findIndex(key => key.slice(1) === field)
-    if (index >= 0) {
-        const oldField = sortCriteriaArray[index]
+    if (index === -1) {
+        sortCriteriaArray.unshift('-' + field)
+    } else if (sortCriteriaArray[index][0] === '-') {
         sortCriteriaArray.splice(index, 1)
-        if (oldField[0] === '+') {
-            sortCriteriaArray.unshift('-' + field)
-        }
-    } else {
         sortCriteriaArray.unshift('+' + field)
+    } else {
+        sortCriteriaArray.splice(index, 1)
     }
     return sortCriteriaArray.join(',')
 }
@@ -94,7 +100,7 @@ class Main extends React.Component {
         this.setState({ browsers, renderers })
     }
     updateDrawer() {
-        const isDrawerDocked = window.innerWidth > 720,
+        const isDrawerDocked = window.innerWidth > 1024,
             drawerWidth = isDrawerDocked ? 
                 Math.min(window.innerWidth * 0.3, 320) :
                 Math.min(window.innerWidth * 0.8, 320)
@@ -109,11 +115,23 @@ class Main extends React.Component {
             this.setState({ playingState: { isStopped: true } })
         }
     }
-    async playNext() {
+
+    tickTimeout = 0
+    async onTick() {
+        clearTimeout(this.tickTimeout)
+        const playingTime = this.state.playingState.isPlaying ? await this.getPosition() : this.state.playingTime,
+            rest = Math.floor(playingTime) + 1 - playingTime,
+            timeout = rest < 0.1 ? rest + 1 : rest
+        this.tickTimeout = setTimeout(() => this.onTick(), timeout * 1000)
+        this.setState({ playingTime })
+    }
+
+    audio = new Audio()
+    async playNext(delta = 1) {
         const { playingTrack, playingQueue, playingLocation, playingPath } = this.state
         if (playingTrack && Array.isArray(playingQueue)) {
             const index = playingQueue.findIndex(track => track.id === playingTrack.id),
-                nextIndex = (index + 1) % playingQueue.length,
+                nextIndex = (index + playingQueue.length + delta) % playingQueue.length,
                 nextTrack = playingQueue[nextIndex]
             if (nextTrack) {
                 await this.load(nextTrack, playingLocation, playingPath, playingQueue)
@@ -121,8 +139,6 @@ class Main extends React.Component {
             }
         }
     }
-
-    audio = new Audio()
     async playPauseTrack(track, location, path, queue) {
         const { playingTrack, playingState } = this.state
         if (track.id === playingTrack.id) {
@@ -256,6 +272,7 @@ class Main extends React.Component {
 
         rendererLocation: localStorage.getItem('main-renderer-location') || '',
         playingTrack: { },
+        playingTime: 0,
         playingState: { isStopped: true },
         playingLocation: '',
         playingPath: '',
@@ -275,6 +292,7 @@ class Main extends React.Component {
         this.ws.on('av-update', update => this.setState(update))
         this.updateDrawer()
         window.addEventListener('resize', debounce(() => this.updateDrawer(), 200))
+        this.onTick()
     }
     renderOutputSelector() {
         const { rendererLocation, renderers } = this.state
@@ -283,8 +301,8 @@ class Main extends React.Component {
             onChange={ rendererLocation => this.setState({ rendererLocation }) }
             options={
                 [{
-                    primary: 'This Browser',
-                    secondary: 'local output',
+                    primary: 'Browser',
+                    secondary: 'output',
                     value: ''
                 }].concat(renderers.map(dev => ({
                     primary: dev.server,
@@ -295,7 +313,7 @@ class Main extends React.Component {
             render={
                 (selected, onClick) => <ListItem button onClick={ onClick }>
                     <ListItemIcon>
-                        { selected && selected.value ? <Phonelink /> : <Speaker /> }
+                        { selected && selected.value ? <Phonelink /> : <SurroundSound /> }
                     </ListItemIcon>
                     <ListItemText
                         primary={ selected ? selected.primary : 'Select Output' }
@@ -327,57 +345,80 @@ class Main extends React.Component {
         </Select>
     }
     renderAppBar() {
-        const { renderers, browsers, isDrawerDocked, drawerWidth, isSearchShown, searchKeyword } = this.state,
-            { pathname } = this.props.location
+        const { isDrawerDocked, drawerWidth } = this.state
         return <AppBar className="appbar" style={{
             marginLeft: isDrawerDocked ? drawerWidth : 0,
             width: isDrawerDocked ? `calc(100% - ${drawerWidth}px)` : '100%',
         }} color="default">
-        {
-            isDrawerDocked ? <Toolbar>
-                <Typography className="title" type="title" style={{ flex: 1 }}>
-                    { (pathname.match(/\/browse\/.*\/([^\/]+)$/) || ['', 'Title']).pop() }
-                </Typography>
-                {
-                    isSearchShown ?
-                        <TextField placeholder="Search..."
-                            autoFocus={ true }
-                            value={ searchKeyword }
-                            onBlur={ () => this.setState({ isSearchShown: false }) }
-                            onChange={ evt => this.setState({ searchKeyword: evt.target.value }) }
-                            onKeyDown={ evt => evt.which === 13 && this.beginSearch() }>
-                        </TextField> :
-                        <IconButton onClick={ () => this.setState({ isSearchShown: true }) }>
-                            <Search />
-                        </IconButton>
-                }
-            </Toolbar> : isSearchShown ?
-            <Toolbar>
-                <TextField placeholder="Search..."
-                    fullWidth={ true }
-                    autoFocus={ true }
-                    value={ searchKeyword }
-                    onBlur={ () => this.setState({ isSearchShown: false }) }
-                    onChange={ evt => this.setState({ searchKeyword: evt.target.value }) }
-                    onKeyDown={ evt => evt.which === 13 && this.beginSearch() }>
-                </TextField>
-                <IconButton onClick={ () => this.setState({ isSearchShown: false }) }>
-                    <Close />
-                </IconButton>
-            </Toolbar> :
-            <Toolbar>
-                <IconButton onClick={ () => this.setState({ isDrawerOpen: !this.state.isDrawerOpen }) }>
-                    <Menu />
-                </IconButton>
-                <Typography className="title" type="title" style={{ flex: 1 }}>
-                    { (pathname.match(/\/browse\/.*\/([^\/]+)$/) || ['', 'Title']).pop() }
-                </Typography>
-                <IconButton onClick={ () => this.setState({ isSearchShown: true }) }>
-                    <Search />
-                </IconButton>
-            </Toolbar>
-        }
+            <Switch>
+                <Route path="/browse/:host/(.*)"
+                    render={ props => this.renderBrowserToolbar(props.match.params.host, props.match.params[0]) }></Route>
+                <Route render={
+                    props => <Toolbar>
+                        <Typography className="title" type="title" style={{ flex: 1 }}>
+                            Title
+                        </Typography>
+                    </Toolbar>
+                }></Route>
+            </Switch>
         </AppBar>
+    }
+    renderBrowserToolbar(host, path) {
+        const { renderers, browsers, isDrawerDocked, drawerWidth, isSearchShown, searchKeyword } = this.state,
+            pathSplit = path ? path.split('/') : [ ],
+            [parentPath, folderName] = [pathSplit.slice(0, -1).join('/'), pathSplit.slice(-1).pop() || 'Root']
+        return isDrawerDocked ? <Toolbar>
+            <Typography className="title" type="title" style={{ flex: 1 }}>
+                {
+                    [''].concat(pathSplit).map((dirname, index) => <span key={ index }>
+                        { index > 0 && '/' }
+                        <Button
+                            onClick={ () => this.props.history.push(`/browse/${host}/${pathSplit.slice(0, index).join('/')}`) }>
+                            { getTitleMain(dirname) || 'Root' }
+                        </Button>
+                    </span>)
+                }
+            </Typography>
+            {
+                isSearchShown ?
+                    <TextField placeholder="Search..."
+                        style={{ marginLeft: 16 }}
+                        autoFocus={ true }
+                        value={ searchKeyword }
+                        onBlur={ () => this.setState({ isSearchShown: false }) }
+                        onChange={ evt => this.setState({ searchKeyword: evt.target.value }) }
+                        onKeyDown={ evt => evt.which === 13 && this.beginSearch() }>
+                    </TextField> :
+                    <IconButton onClick={ () => this.setState({ isSearchShown: true }) }>
+                        <Search />
+                    </IconButton>
+            }
+        </Toolbar> : isSearchShown ?
+        <Toolbar>
+            <TextField placeholder="Search..."
+                style={{ marginLeft: 16 }}
+                fullWidth={ true }
+                autoFocus={ true }
+                value={ searchKeyword }
+                onBlur={ () => this.setState({ isSearchShown: false }) }
+                onChange={ evt => this.setState({ searchKeyword: evt.target.value }) }
+                onKeyDown={ evt => evt.which === 13 && this.beginSearch() }>
+            </TextField>
+            <IconButton onClick={ () => this.setState({ isSearchShown: false }) }>
+                <Close />
+            </IconButton>
+        </Toolbar> :
+        <Toolbar>
+            <IconButton onClick={ () => this.setState({ isDrawerOpen: !this.state.isDrawerOpen }) }>
+                <Menu />
+            </IconButton>
+            <Typography className="title" type="title" style={{ flex: 1 }}>
+                { folderName }
+            </Typography>
+            <IconButton onClick={ () => this.setState({ isSearchShown: true }) }>
+                <Search />
+            </IconButton>
+        </Toolbar>
     }
     renderBrowserTools(host, path) {
         const { browsers, sortCaps } = this.state,
@@ -410,73 +451,78 @@ class Main extends React.Component {
         </List>
     }
     renderDrawer() {
-        const { isDrawerDocked, drawerWidth, sortCaps, browsers, playingTrack } = this.state,
+        const { isDrawerDocked, drawerWidth, sortCaps, browsers, playingTrack, playingState, albumartSwatches } = this.state,
             backgroundImageUrl = cssStyleUrl(playingTrack.upnpAlbumArtURI || 'assets/thumbnail_default.png')
         return <Drawer
                 className="drawer"
                 type={ isDrawerDocked ? 'permanent' : 'temporary' }
                 open={ this.state.isDrawerOpen }
                 onRequestClose={ () => this.setState({ isDrawerOpen: false }) }>
-            <div className="header" style={{ backgroundImage: `url(${backgroundImageUrl})` }}>
+            <div className="player">
+                <div className="options">
+                    <IconButton onClick={ () => this.browsePlayingFolder() }><PlaylistPlay /></IconButton>
+                    <IconButton><MoreVert /></IconButton>
+                </div>
+                <IconButton style={{ color: albumartSwatches.DarkMuted }} className="control"
+                    onClick={ () => this.playNext(-1) }>
+                    <SkipPrevious style={{ width: 48, height: 48, marginTop: 12 }}  />
+                </IconButton>
+                <IconButton style={{ color: albumartSwatches.DarkMuted }} className="control"
+                    onClick={ () => playingState.isPlaying ? this.pause() : this.play() }>
+                    {
+                        playingState.isPlaying ?
+                            <PauseCircleOutline style={{ width: 72, height: 72 }} /> :
+                            <PlayCircleOutline style={{ width: 72, height: 72 }} />
+                    }
+                </IconButton>
+                <IconButton style={{ color: albumartSwatches.DarkMuted }} className="control"
+                    onClick={ () => this.playNext() }>
+                    <SkipNext style={{ width: 48, height: 48, marginTop: 12 }}  />
+                </IconButton>
             </div>
+            <div className="player-bg" style={{ backgroundImage: `url(${backgroundImageUrl})` }}></div>
             <Divider />
             <List disablePadding style={{ width: drawerWidth }}>
                 { this.renderBrowserSelector() }
                 { this.renderOutputSelector() }
-                <ListItem button>
-                    <ListItemIcon><Star /></ListItemIcon>
-                    <ListItemText primary="Playing" onClick={ () => this.browsePlayingFolder() } />
-                </ListItem>
             </List>
             <Divider />
-            <Route path="/browse/:host/(.*)" render={
-                props => this.renderBrowserTools(props.match.params.host, props.match.params[0])
-             } />
+            <Route path="/browse/:host/(.*)"
+                render={ props => this.renderBrowserTools(props.match.params.host, props.match.params[0]) } />
         </Drawer>
     }
+    renderBrowser(host, path) {
+        const { browsers, playingTrack, playingState, playingTime } = this.state,
+            { location } = browsers.find(dev => dev.url.host === host) || { },
+            saveKey = `browser-sort-${location}-${path}`,
+            sortCriteria = localStorage.getItem(saveKey) || ''
+        this.checkBrowseLocationChange(location)
+        return <Browser
+            onLoadStart={ () => this.setState({ isDrawerOpen: false, isSearchShown: false }) }
+            onSelectFolder={ path => this.props.history.push(`/browse/${host}/${path}`) }
+            onSelectTrack={ (track, queue) => this.playPauseTrack(track, location, path, queue) }
+            { ...{ path, location, sortCriteria, playingState, playingTime, playingTrack } }>
+        </Browser>
+    }
     renderBody() {
-        const {
-            browserLocation, browsers,
-            rendererLocation, playingTrack, playingState,
-            isDrawerOpen, isDrawerDocked, drawerWidth,
-        } = this.state
-        return <div style={{ marginLeft: isDrawerDocked ? drawerWidth : 0 }}>
-            <Player
-                onPlay={ () => this.play() }
-                onPause={ () => this.pause() }
-                onBrowsePlaying = { () => this.browsePlayingFolder() }
-                getPosition={ () => this.getPosition() }
-                location={ rendererLocation }
-                { ...{ playingTrack, playingState } }></Player>
-            <Route exact path="/" render={ () => <Redirect to="/browse" /> } />
-            <Route exact path="/browse" render={
-                props => <List>
-                    {
-                        this.state.browsers.map(dev => <ListItem button key={ dev.location }
-                                onClick={ () => props.history.push(`/browse/${dev.url.host}/`) }>
-                            <ListItemText primary={ dev.server } secondary={ dev.url.host } />
-                        </ListItem>)
-                    }
-                </List>
-            }>
-            </Route>
-            <Route path="/browse/:host/(.*)" render={
-                props => {
-                    const { params } = props.match,
-                        path = params[0],
-                        { location } = browsers.find(dev => dev.url.host === params.host) || { },
-                        saveKey = `browser-sort-${location}-${path}`,
-                        sortCriteria = localStorage.getItem(saveKey) || ''
-                    this.checkBrowseLocationChange(location)
-                    return <Browser
-                        onLoadStart={ () => this.setState({ isDrawerOpen: false, isSearchShown: false }) }
-                        onSelectFolder={ path => props.history.push(`/browse/${params.host}/${path}`) }
-                        onSelectTrack={ (track, queue) => this.playPauseTrack(track, location, path, queue) }
-                        { ...{ path, location, playingTrack, sortCriteria, playingState } }>
-                    </Browser>
-                }
-            }>
-            </Route>
+        const { isDrawerOpen, isDrawerDocked, drawerWidth } = this.state
+        return <div style={{ marginLeft: isDrawerDocked ? drawerWidth : 0 }} className="body">
+            <Switch>
+                <Route path="/browse/:host/(.*)"
+                    render={ props => this.renderBrowser(props.match.params.host, props.match.params[0]) } />
+                <Route path="/browse" render={
+                    props => <List>
+                        {
+                            this.state.browsers.map(dev => <ListItem button key={ dev.location }
+                                    onClick={ () => props.history.push(`/browse/${dev.url.host}/`) }>
+                                <ListItemText primary={ dev.server } secondary={ dev.url.host } />
+                            </ListItem>)
+                        }
+                    </List>
+                }>
+                </Route>
+                <Route render={ () => <Redirect to="/browse" /> } />
+            </Switch>
         </div>
     }
 
@@ -486,21 +532,21 @@ class Main extends React.Component {
             this.ws.emit('upnp-unsub', { url: lastRenderLocation })
         }
         if (rendererLocation) {
-            this.ws.emit('upnp-sub', { url: rendererLocation })
-            this.ws.emit('av-sync', { url: rendererLocation }, update => this.setState(update))
+            this.ws.emit('upnp-sub', { url: rendererLocation }, update => this.setState(update))
         }
     })
 
     checkBrowseLocationChange = onChange(async browserLocation => {
-        await new Promise(resolve => setTimeout(resolve, 10, [ ]))
+        await new Promise(resolve => setTimeout(resolve, 10))
+
         const sortCaps = browserLocation ? await upnp.getSortCapabilities(browserLocation) : [ ]
         this.setState({ sortCaps })
     })
 
     checkAlbumartChange = onChange(async src => {
         if (!src) return
+        await new Promise(resolve => setTimeout(resolve, 10))
 
-        /*
         const img = document.createElement('img')
         img.crossOrigin = 'Anonymous'
         await new Promise((onload, onerror) => Object.assign(img, { src, onload, onerror }))
@@ -512,17 +558,20 @@ class Main extends React.Component {
         }
         console.log(albumartSwatches)
         this.setState({ albumartSwatches })
-        */
     })
 
     render() {
-        const { rendererLocation, playingTrack } = this.state
+        const { rendererLocation, playingTrack, playingTime, albumartSwatches } = this.state
         this.checkRenderLocationChange(rendererLocation)
         this.checkAlbumartChange(playingTrack.upnpAlbumArtURI)
         return <div>
             { this.renderAppBar() }
             { this.renderDrawer() }
             { this.renderBody() }
+            <div className="progress">
+                <LinearProgress mode="determinate"
+                    value={ playingTrack.res ? playingTime * 100 / hhmmss2sec(playingTrack.res.duration || '') : 0 } />
+            </div>
         </div>
     }
 }

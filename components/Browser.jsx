@@ -45,16 +45,16 @@ async function upnpBrowse(url,
     return await fetchJson(`upnp-content-directory/${method}`, { url, inputs })
 }
 
-function getTitleMain(title) {
+export function getTitleMain(title) {
     return title.replace(/\[[^\]]+\]/g, '')
-        .replace(/\([^\)]+\)/g, '') || 'Unamed'
+        .replace(/\([^\)]+\)/g, '')
 }
 
-function getTitleSub(title) {
+export function getTitleSub(title) {
     const brackets = [ ]
     title.replace(/\[[^\]]+\]/g, m => brackets.push(m))
         .replace(/\([^\)]+\)/g, m => brackets.push(m))
-    return brackets.join(' ') || 'folder'
+    return brackets.join(' ')
 }
 
 const browserCache = { },
@@ -131,7 +131,7 @@ export default class Browser extends React.Component {
         const { onSelectFolder } = this.props,
             { list } = this.state,
             containers = list.filter(item => item.upnpClass.startsWith('object.container'))
-        return containers.length > 0 && <Grid container align="stretch" justify="center">
+        return containers.length > 0 && <Grid container justify="center">
         {
             containers.map(item => <Card className="card" key={ item.id }>
                 <CardMedia className="albumart"
@@ -141,10 +141,9 @@ export default class Browser extends React.Component {
                 <CardContent className="content">
                     <Typography onClick={ () => onSelectFolder(item.id) }
                         className="title" title={ item.dcTitle } type="title">
-                        { getTitleMain(item.dcTitle) }
+                        { getTitleMain(item.dcTitle) || 'Untitled' }
                     </Typography>
                     <Typography className="sub">
-                        { getTitleSub(item.dcTitle) }
                         <IconButton className="more"
                             onClick={
                                 evt => this.setState({
@@ -154,6 +153,7 @@ export default class Browser extends React.Component {
                             }>
                             <MoreVert style={{ width: 18, height: 18 }} />
                         </IconButton>
+                        { getTitleSub(item.dcTitle) || 'folder' }
                     </Typography>
                 </CardContent>
             </Card>)
@@ -161,7 +161,7 @@ export default class Browser extends React.Component {
         </Grid>
     }
     renderTracks() {
-        const { playingTrack, playingState, onSelectFolder } = this.props,
+        const { playingTrack, playingState, onSelectFolder, playingTime } = this.props,
             { list } = this.state,
             tracks = list.filter(item => item.upnpClass === 'object.item.audioItem.musicTrack')
                 .map(track => Object.assign(track, { groupBy: track.parentID + '/' + track.upnpAlbum })),
@@ -203,11 +203,12 @@ export default class Browser extends React.Component {
                         }>
                     </ListItemText>
                     <ListItemSecondaryAction>
+                        { item.id === playingTrack.id && sec2mmss(playingTime) + ' / ' }
+                        { sec2mmss(hhmmss2sec(item.res.duration || '')) }
                         {
                             item.id === playingTrack.id && playingState.isPlaying &&
                                 <img className="playing-ani" src="assets/ani_equalizer_black.gif" />
                         }
-                        { sec2mmss(hhmmss2sec(item.res.duration || '')) }
                     </ListItemSecondaryAction>
                 </ListItem>)
             }
