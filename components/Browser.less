@@ -8,15 +8,15 @@
 
         .albumart {
             height: 180px;
+            background-color: #ccc;
         }
 
         .content {
             padding: 15px;
         }
 
-        @media (max-width: 420px) {
-            width: 45%;
-            margin: 2.5%;
+        @media (max-width: 834px) {
+            width: 165px;
 
             .albumart {
                 height: 140px;
@@ -25,6 +25,11 @@
             .content {
                 padding: 10px;
             }
+        }
+
+        @media (max-width: 420px) {
+            width: 45%;
+            margin: 2.5%;
         }
 
         .title, .sub {
@@ -71,6 +76,7 @@
                 height: 120px;
                 background-size: cover;
                 background-position: center;
+                background-color: #ccc;
 
                 @media (max-width: 361px) {
                     float: none;
@@ -142,7 +148,7 @@
         width: 40px;
         height: 40px;
         margin-top: 0.8em;
-        margin-left: -32px;
+        margin-left: -40px;
     }
 
     .loading {

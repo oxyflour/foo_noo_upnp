@@ -241,13 +241,6 @@ class Main extends React.Component {
             return this.audio.currentTime
         }
     }
-    async browsePlayingFolder() {
-        const { playingLocation, playingPath, browsers } = this.state,
-            { url } = browsers.find(dev => dev.location === playingLocation) || { }
-        if (url) {
-            this.props.history.push(`/browse/${url.host}/${playingPath}`)
-        }
-    }
     beginSearch() {
         const { searchKeyword } = this.state,
             { pathname } = this.props.location
@@ -352,15 +345,20 @@ class Main extends React.Component {
             <Switch>
                 <Route path="/browse/:host/(.*)"
                     render={ props => this.renderBrowserToolbar(props.match.params.host, props.match.params[0]) }></Route>
-                <Route render={
-                    props => <Toolbar>
-                        <Typography className="title" type="title" style={{ flex: 1 }}>
-                            Title
-                        </Typography>
-                    </Toolbar>
-                }></Route>
+                <Route
+                    render={ props => this.renderTitledToolbar('Foo Noo') }></Route>
             </Switch>
         </AppBar>
+    }
+    renderTitledToolbar(title) {
+        return <Toolbar>
+            <IconButton onClick={ () => this.setState({ isDrawerOpen: !this.state.isDrawerOpen }) }>
+                <Menu />
+            </IconButton>
+            <Typography className="title" type="title" style={{ flex: 1 }}>
+                { title }
+            </Typography>
+        </Toolbar>
     }
     renderBrowserToolbar(host, path) {
         const { renderers, browsers, isDrawerDocked, drawerWidth, isSearchShown, searchKeyword } = this.state,
@@ -450,8 +448,11 @@ class Main extends React.Component {
         </List>
     }
     renderDrawer() {
-        const { isDrawerDocked, drawerWidth, sortCaps, browsers, playingTrack, playingState, albumartSwatches } = this.state,
-            backgroundImageUrl = cssStyleUrl(playingTrack.upnpAlbumArtURI || 'assets/thumbnail_default.png')
+        const { isDrawerDocked, drawerWidth, sortCaps, albumartSwatches, browsers } = this.state,
+            { playingLocation, playingPath, playingTrack, playingState } = this.state,
+            backgroundImageUrl = cssStyleUrl(playingTrack.upnpAlbumArtURI || 'assets/thumbnail_default.png'),
+            { url } = browsers.find(dev => dev.location === playingLocation) || { },
+            playingPathName = `/browse/${url && url.host}/${playingPath}`
         return <Drawer
                 className="drawer"
                 type={ isDrawerDocked ? 'permanent' : 'temporary' }
@@ -459,14 +460,20 @@ class Main extends React.Component {
                 onRequestClose={ () => this.setState({ isDrawerOpen: false }) }>
             <div className="player">
                 <div className="options">
-                    <IconButton onClick={ () => this.browsePlayingFolder() }><PlaylistPlay /></IconButton>
+                    {
+                        this.props.location.pathname !== playingPathName && <IconButton
+                            onClick={ () => this.props.history.push(playingPathName) }>
+                            <PlaylistPlay />
+                        </IconButton>
+                    }
                     <IconButton><MoreVert /></IconButton>
                 </div>
-                <IconButton style={{ color: albumartSwatches.DarkMuted }} className="control"
+                <IconButton style={{ color: albumartSwatches.DarkMuted, width: '30%' }} className="control"
                     onClick={ () => this.playNext(-1) }>
-                    <SkipPrevious style={{ width: 48, height: 48, marginTop: 12 }}  />
+                    <SkipPrevious style={{ width: 48, height: 48 }} />
                 </IconButton>
-                <IconButton style={{ color: albumartSwatches.DarkMuted }} className="control"
+                <IconButton style={{ color: albumartSwatches.DarkMuted, width: '30%', height: 72 }}
+                    className="control"
                     onClick={ () => playingState.isPlaying ? this.pause() : this.play() }>
                     {
                         playingState.isPlaying ?
@@ -474,9 +481,9 @@ class Main extends React.Component {
                             <PlayCircleOutline style={{ width: 72, height: 72 }} />
                     }
                 </IconButton>
-                <IconButton style={{ color: albumartSwatches.DarkMuted }} className="control"
+                <IconButton style={{ color: albumartSwatches.DarkMuted, width: '30%' }} className="control"
                     onClick={ () => this.playNext() }>
-                    <SkipNext style={{ width: 48, height: 48, marginTop: 12 }}  />
+                    <SkipNext style={{ width: 48, height: 48 }}  />
                 </IconButton>
             </div>
             <div className="player-bg" style={{ backgroundImage: `url(${backgroundImageUrl})` }}></div>
