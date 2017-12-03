@@ -99,7 +99,7 @@ class Main extends React.Component {
         this.setState({ browsers, renderers })
     }
     updateDrawer() {
-        const isDrawerDocked = window.innerWidth > 1024,
+        const isDrawerDocked = window.innerWidth > 768,
             drawerWidth = isDrawerDocked ? 
                 Math.min(window.innerWidth * 0.3, 320) :
                 Math.min(window.innerWidth * 0.8, 320)
@@ -555,7 +555,6 @@ class Main extends React.Component {
         for (const key in swatches) {
             albumartSwatches[key] = swatches[key].getHex()
         }
-        console.log(albumartSwatches)
         this.setState({ albumartSwatches })
     })
 

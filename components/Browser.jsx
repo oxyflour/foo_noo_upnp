@@ -170,7 +170,7 @@ export default class Browser extends React.Component {
         return <List subheader className="album-list">
         {
             albums.map(album => <div className="album" key={ album.groupBy }>
-            <ListSubheader className="album-header">
+            <ListSubheader className="album-header" disableSticky={ true }>
                 <span className="albumart" style={{
                     backgroundImage: `url(${cssStyleUrl(album.upnpAlbumArtURI || 'assets/thumbnail_default.png')})`
                 }}></span>
