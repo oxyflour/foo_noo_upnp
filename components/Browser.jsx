@@ -161,7 +161,7 @@ export default class Browser extends React.Component {
         </Grid>
     }
     renderTracks() {
-        const { playingTrack, playingState, onSelectFolder, playingTime } = this.props,
+        const { playingTrack, playingState, onSelectFolder, playingTime, albumartSwatches } = this.props,
             { list } = this.state,
             tracks = list.filter(item => item.upnpClass === 'object.item.audioItem.musicTrack')
                 .map(track => Object.assign(track, { groupBy: track.parentID + '/' + track.upnpAlbum })),
@@ -188,7 +188,7 @@ export default class Browser extends React.Component {
                     className={ ['track', item.id === playingTrack.id && 'playing'].join(' ') }
                     onClick={ () => this.selectTrack(item) }>
                     <ListItemAvatar>
-                        <Avatar>
+                        <Avatar style={{ backgroundColor: item.id === playingTrack.id ? albumartSwatches.DarkMuted : undefined }}>
                         {
                             item.id === playingTrack.id && playingState.isPlaying ? <PlayArrow /> : 
                             item.id === playingTrack.id && playingState.isPaused ? <Pause />:

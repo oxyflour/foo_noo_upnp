@@ -454,4 +454,46 @@ const avTransportDescription = {
     },
 }
 
-module.exports = { devOpts, contentDirectoryDescription, avTransportDescription }
+const renderingControlDescription = {
+    actions: {
+        GetVolume: {
+            inputs: {
+                InstanceID: 'A_ARG_TYPE_InstanceID',
+                Channel: 'A_ARG_TYPE_Channel',
+            },
+            outputs: {
+                CurrentVolume: 'Volume',
+            },
+        },
+        SetVolume: {
+            inputs: {
+                InstanceID: 'A_ARG_TYPE_InstanceID',
+                Channel: 'A_ARG_TYPE_Channel',
+                DesiredVolume: 'Volume',
+            },
+            outputs: {
+            },
+        },
+    },
+    variables: {
+        A_ARG_TYPE_InstanceID: {
+            type: 'ui4',
+        },
+        A_ARG_TYPE_Channel: {
+            type: 'string',
+            enum: [
+                'Master',
+            ],
+        },
+        Volume: {
+            type: 'ui2',
+            range: {
+                min: 0,
+                max: 100,
+                step: 1,
+            },
+        },
+    },
+}
+
+module.exports = { devOpts, contentDirectoryDescription, avTransportDescription, renderingControlDescription }

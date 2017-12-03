@@ -12,6 +12,7 @@ import IconButton from 'material-ui/IconButton'
 import Drawer from 'material-ui/Drawer'
 import Divider from 'material-ui/Divider'
 import TextField from 'material-ui/TextField'
+import Dialog, { DialogTitle } from 'material-ui/Dialog'
 
 import Delete from 'material-ui-icons/Delete'
 import KeyboardArrowLeft from 'material-ui-icons/KeyboardArrowLeft'
@@ -33,6 +34,9 @@ import PlayCircleOutline from 'material-ui-icons/PlayCircleOutline'
 import PauseCircleOutline from 'material-ui-icons/PauseCircleOutline'
 import PlaylistPlay from 'material-ui-icons/PlaylistPlay'
 import MoreVert from 'material-ui-icons/MoreVert'
+import VolumeUp from 'material-ui-icons/VolumeUp'
+import VolumeDown from 'material-ui-icons/VolumeDown'
+import VolumeMute from 'material-ui-icons/VolumeMute'
 
 import { HashRouter, Route, Redirect, Switch } from 'react-router-dom'
 
@@ -86,8 +90,7 @@ class Main extends React.Component {
         if (dev.st === 'urn:schemas-upnp-org:service:ContentDirectory:1') {
             const found = browsers.find(dev => dev.location === location)
             if (!found) this.setState({ browsers: browsers.concat(dev) })
-        }
-        else if (dev.st === 'urn:schemas-upnp-org:service:AVTransport:1') {
+        } else if (dev.st === 'urn:schemas-upnp-org:service:AVTransport:1') {
             const found = renderers.find(dev => dev.location === location)
             if (!found) this.setState({ renderers: renderers.concat(dev) })
         }
@@ -227,6 +230,26 @@ class Main extends React.Component {
             this.setState({ playingState: { isStopped: true } })
         }
     }
+    setVolumeDebounced(volume) {
+        this.setState({ playingVolume: volume })
+        this.setVolumeRemote(volume)
+    }
+    setVolumeRemote = debounce(async volume => {
+        const { rendererLocation, playingInstanceID } = this.state
+        if (rendererLocation) {
+            await fetchJson('/upnp-avtransport/SetVolume', {
+                url: rendererLocation,
+                inputs: {
+                    InstanceID: playingInstanceID,
+                    Channel: 'Master',
+                    DesiredVolume: Math.floor(volume * 100),
+                },
+                update: { playingVolume: volume },
+            })
+        } else {
+            this.setState({ playingVolume: this.audio.volume = volume })
+        }
+    }, 200)
 
     async getPosition() {
         const { rendererLocation, playingInstanceID } = this.state
@@ -255,6 +278,8 @@ class Main extends React.Component {
         renderers: [ ],
         browsers: [ ],
 
+        isPlayerConfigShown: false,
+
         isDrawerOpen: false,
         isDrawerDocked: false,
         drawerWidth: 0,
@@ -263,6 +288,7 @@ class Main extends React.Component {
         searchKeyword: '',
 
         rendererLocation: localStorage.getItem('main-renderer-location') || '',
+        playingVolume: 0,
         playingTrack: { },
         playingTime: 0,
         playingState: { isStopped: true },
@@ -282,9 +308,10 @@ class Main extends React.Component {
         this.ws.on('ssdp-disappear', dev => this.removeDevice(dev))
         // this.ws.on('upnp-recv', evt => this.updatePlayer(evt))
         this.ws.on('av-update', update => this.setState(update))
+
+        this.onTick()
         this.updateDrawer()
         window.addEventListener('resize', debounce(() => this.updateDrawer(), 200))
-        this.onTick()
     }
     renderOutputSelector() {
         const { rendererLocation, renderers } = this.state
@@ -448,8 +475,9 @@ class Main extends React.Component {
         </List>
     }
     renderDrawer() {
-        const { isDrawerDocked, drawerWidth, sortCaps, albumartSwatches, browsers } = this.state,
-            { playingLocation, playingPath, playingTrack, playingState } = this.state,
+        const { isDrawerDocked, isSearchShown, drawerWidth, isPlayerConfigShown } = this.state,
+            { sortCaps, albumartSwatches, browsers } = this.state,
+            { playingLocation, playingPath, playingTrack, playingState, playingVolume } = this.state,
             backgroundImageUrl = cssStyleUrl(playingTrack.upnpAlbumArtURI || 'assets/thumbnail_default.png'),
             { url } = browsers.find(dev => dev.location === playingLocation) || { },
             playingPathName = `/browse/${url && url.host}/${playingPath}`
@@ -466,7 +494,9 @@ class Main extends React.Component {
                             <PlaylistPlay />
                         </IconButton>
                     }
-                    <IconButton><MoreVert /></IconButton>
+                    <IconButton onClick={ () => this.setState({ isPlayerConfigShown: true }) }>
+                        <MoreVert />
+                    </IconButton>
                 </div>
                 <IconButton style={{ color: albumartSwatches.DarkMuted, width: '30%' }} className="control"
                     onClick={ () => this.playNext(-1) }>
@@ -483,10 +513,27 @@ class Main extends React.Component {
                 </IconButton>
                 <IconButton style={{ color: albumartSwatches.DarkMuted, width: '30%' }} className="control"
                     onClick={ () => this.playNext() }>
-                    <SkipNext style={{ width: 48, height: 48 }}  />
+                    <SkipNext style={{ width: 48, height: 48 }} />
                 </IconButton>
             </div>
             <div className="player-bg" style={{ backgroundImage: `url(${backgroundImageUrl})` }}></div>
+            <Dialog open={ isPlayerConfigShown }
+                onRequestClose={ () => this.setState({ isPlayerConfigShown: false }) }>
+                <DialogTitle>Player Settings</DialogTitle>
+                <List>
+                    <ListItem>
+                        <ListItemIcon>
+                            {
+                                playingVolume > 0.5 ? <VolumeUp /> :
+                                playingVolume > 0 ? <VolumeDown /> :
+                                    <VolumeMute />
+                            }
+                        </ListItemIcon>
+                        <input type="range" min="0" max="1" step="0.01" value={ playingVolume }
+                            onChange={ evt => this.setVolumeDebounced(parseFloat(evt.target.value)) } />
+                    </ListItem>
+                </List>
+            </Dialog>
             <Divider />
             <List disablePadding style={{ width: drawerWidth }}>
                 { this.renderBrowserSelector() }
@@ -498,7 +545,7 @@ class Main extends React.Component {
         </Drawer>
     }
     renderBrowser(host, path) {
-        const { browsers, playingTrack, playingState, playingTime } = this.state,
+        const { browsers, playingTrack, playingState, playingTime, albumartSwatches } = this.state,
             { location } = browsers.find(dev => dev.url.host === host) || { },
             saveKey = `browser-sort-${location}-${path}`,
             sortCriteria = localStorage.getItem(saveKey) || ''
@@ -507,7 +554,7 @@ class Main extends React.Component {
             onLoadStart={ () => this.setState({ isDrawerOpen: false, isSearchShown: false }) }
             onSelectFolder={ path => this.props.history.push(`/browse/${host}/${path}`) }
             onSelectTrack={ (track, queue) => this.playPauseTrack(track, location, path, queue) }
-            { ...{ path, location, sortCriteria, playingState, playingTime, playingTrack } }>
+            { ...{ path, location, sortCriteria, albumartSwatches, playingState, playingTime, playingTrack } }>
         </Browser>
     }
     renderBody() {
