@@ -204,7 +204,7 @@ export default class Browser extends React.Component {
                     </ListItemText>
                     <ListItemSecondaryAction>
                         { item.id === playingTrack.id && sec2mmss(playingTime) + ' / ' }
-                        { sec2mmss(hhmmss2sec(item.res.duration || '')) }
+                        { item.resList && sec2mmss(hhmmss2sec(item.resList[0].duration || '')) }
                         {
                             item.id === playingTrack.id && playingState.isPlaying &&
                                 <img className="playing-ani" src="assets/ani_equalizer_black.gif" />

@@ -46,6 +46,19 @@ function debounce(fn, time) {
     }
 }
 
+function throttle(fn, time) {
+    let timeout
+    return function() {
+        if (timeout) {
+            return
+        }
+        timeout = setTimeout(() => {
+            timeout = 0
+            fn.apply(this, arguments)
+        }, time)
+    }
+}
+
 async function fetchJson(url, body) {
     const resp = await fetch(url, {
         headers: {

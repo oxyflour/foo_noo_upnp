@@ -79,6 +79,13 @@ const upnp = {
             return [ ]
         }
     },
+    async getDeviceCapabilities(rendererLocation) {
+        const result = await fetchJson('/upnp/GetPositionInfo', {
+            url: rendererLocation,
+            inputs: { }
+        })
+        return result
+    }
 }
 
 class Main extends React.Component {
@@ -160,10 +167,10 @@ class Main extends React.Component {
             this.audio.childNodes.forEach(source => source.parentNode.removeChild(source))
             this.audio = new Audio()
             this.audio.addEventListener('ended', () => this.playNext())
-            for (const type in playingTrack.allRes || { }) {
+            for (const res of playingTrack.resList || [ ]) {
                 const source = document.createElement('source')
-                source.type = type
-                source.src = playingTrack.allRes[type]
+                source.type = res.protocolInfo.split(':').pop()
+                source.src = res.url
                 this.audio.appendChild(source)
             }
             this.audio.load()
@@ -174,8 +181,7 @@ class Main extends React.Component {
                 url: rendererLocation,
                 inputs: {
                     InstanceID: playingInstanceID,
-                    CurrentURI: playingTrack.res.url,
-                    res: playingTrack.res,
+                    resList: playingTrack.resList,
                 },
                 update: { playingTrack, playingLocation, playingPath, playingQueue, playingInstanceID },
             })
@@ -586,6 +592,7 @@ class Main extends React.Component {
         }
         if (rendererLocation) {
             this.ws.emit('upnp-sub', { url: rendererLocation }, update => this.setState(update))
+            console.log(await upnp.getDeviceCapabilities(rendererLocation))
         }
     })
 
@@ -622,7 +629,8 @@ class Main extends React.Component {
             { this.renderBody() }
             <div className="progress" style={{ backgroundColor: albumartSwatches.Muted || '#eee' }}>
                 <div className="bar" style={{
-                    transform: `scaleX(${ playingTrack.res ? playingTime / hhmmss2sec(playingTrack.res.duration || '') : 0 })`,
+                    transform: `scaleX(${ (playingTrack.resList || [ ]).length ?
+                        playingTime / hhmmss2sec(playingTrack.resList[0].duration || '') : 0 })`,
                     backgroundColor: albumartSwatches.DarkMuted || '#aaa',
                 }} />
             </div>

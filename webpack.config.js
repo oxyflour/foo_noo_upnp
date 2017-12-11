@@ -18,7 +18,7 @@ module.exports = {
                 options: {
                     presets: [
                         ['env', { targets: { node: 'current' } }],
-                        'react', 'es2015', 'stage-0'
+                        'react'
                     ],
                     plugins: [
                         'transform-class-properties',
