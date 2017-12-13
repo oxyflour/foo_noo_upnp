@@ -21,7 +21,7 @@ import PlayArrow from 'material-ui-icons/PlayArrow'
 import Pause from 'material-ui-icons/Pause'
 import MoreVert from 'material-ui-icons/MoreVert'
 
-import { debounce, hhmmss2sec, sec2mmss, cssStyleUrl, fetchJson } from '../common/utils'
+import { debounce, hhmmss2sec, sec2mmss, cssStyleUrl, fetchJson, onChange } from '../common/utils'
 
 import './Browser.less'
 
@@ -70,11 +70,10 @@ export default class Browser extends React.Component {
         document.body.scrollTop = browserScrollTop[key]
         this.props.onLoadStart && this.props.onLoadStart(location, path)
     }
-    async loadMore() {
+    async loadMore(count = 20) {
         const { location, path, sortCriteria } = this.props,
             begin = this.state.list.length,
             list = this.state.list.slice(),
-            count = 20,
             [browsePath, searchKeyword] = path.split(path[0] === '~' ? '~/' : '/~/'),
             cacheKey = this.getCacheKey(),
             more = location ?
@@ -89,6 +88,7 @@ export default class Browser extends React.Component {
             this.setState({ list, hasMore })
             this.checkMore()
         }
+        return list
     }
     searchFolder() {
         const { containerMenuItem } = this.state
@@ -96,12 +96,8 @@ export default class Browser extends React.Component {
         this.setState({ containerMenuItem: null })
     }
     async selectTrack(item) {
-        const { location, path, sortCriteria } = this.props,
-            [browsePath, searchKeyword] = path.split('/~/'),
-            queue = await upnpBrowse(location, browsePath || '0', 0, 99,
-                sortCriteria || '+upnp:Album,+upnp:originalTrackNumber',
-                searchKeyword)
-        this.props.onSelectTrack(item, queue)
+        this.props.onSelectTrack(item)
+        this.props.onSyncQueue(await this.loadMore(99))
     }
 
     loadingElement = null
@@ -220,16 +216,12 @@ export default class Browser extends React.Component {
         const { location, path, sortCriteria } = this.props
         return [location, path, sortCriteria].join('#')
     }
-    checkLocationChange() {
-        const cacheKey = this.getCacheKey()
-        if (this.currentLocation !== cacheKey) {
-            browserScrollTop[this.currentLocation] = document.body.scrollTop
-            this.currentLocation = cacheKey
-            this.beginLoad()
-        }
-    }
+    checkLocationChange = onChange((cacheKey, lastCacheKey) => {
+        browserScrollTop[lastCacheKey] = document.body.scrollTop
+        this.beginLoad()
+    })
     render() {
-        this.checkLocationChange()
+        this.checkLocationChange(this.getCacheKey())
         
         const { hasMore, containerMenuItem, containerMenuElem } = this.state
         return <div className="browser">

@@ -135,7 +135,10 @@ class Main extends React.Component {
         this.setState({ playingTime })
     }
 
-    audio = new Audio()
+    audio = (audio => {
+        audio.addEventListener('ended', () => this.playNext())
+        return audio
+    })(new Audio())
     async playNext(delta = 1) {
         const { playingTrack, playingQueue, playingLocation, playingPath } = this.state
         if (playingTrack && Array.isArray(playingQueue)) {
@@ -143,12 +146,12 @@ class Main extends React.Component {
                 nextIndex = (index + playingQueue.length + delta) % playingQueue.length,
                 nextTrack = playingQueue[nextIndex]
             if (nextTrack) {
-                await this.load(nextTrack, playingLocation, playingPath, playingQueue)
+                await this.load(nextTrack, playingLocation, playingPath)
                 await this.play()
             }
         }
     }
-    async playPauseTrack(track, location, path, queue) {
+    async playPauseTrack(track, location, path) {
         const { playingTrack, playingState } = this.state
         if (track.id === playingTrack.id) {
             if (playingState.isPlaying) {
@@ -157,16 +160,25 @@ class Main extends React.Component {
                 await this.play()
             }
         } else {
-            await this.load(track, location, path, queue)
+            await this.load(track, location, path)
             await this.play()
         }
     }
-    async load(playingTrack, playingLocation, playingPath, playingQueue) {
+    async syncQueue(playingQueue) {
+        const { rendererLocation, playingInstanceID } = this.state
+        if (rendererLocation) {
+            await fetchJson('/upnp-avtransport/SyncQueue', {
+                url: rendererLocation,
+                update: { playingQueue },
+            })
+        } else {
+            this.setState(playingQueue)
+        }
+    }
+    async load(playingTrack, playingLocation, playingPath) {
         if (playingTrack) {
             this.audio.pause()
             this.audio.childNodes.forEach(source => source.parentNode.removeChild(source))
-            this.audio = new Audio()
-            this.audio.addEventListener('ended', () => this.playNext())
             for (const res of playingTrack.resList || [ ]) {
                 const source = document.createElement('source')
                 source.type = res.protocolInfo.split(':').pop()
@@ -183,10 +195,10 @@ class Main extends React.Component {
                     InstanceID: playingInstanceID,
                     resList: playingTrack.resList,
                 },
-                update: { playingTrack, playingLocation, playingPath, playingQueue, playingInstanceID },
+                update: { playingTrack, playingLocation, playingPath, playingInstanceID },
             })
         } else {
-            this.setState({ playingTrack, playingLocation, playingPath, playingQueue, playingInstanceID })
+            this.setState({ playingTrack, playingLocation, playingPath, playingInstanceID })
         }
     }
     async play() {
@@ -558,8 +570,9 @@ class Main extends React.Component {
         this.checkBrowseLocationChange(location)
         return <Browser
             onLoadStart={ () => this.setState({ isDrawerOpen: false, isSearchShown: false }) }
+            onSyncQueue={ queue => this.syncQueue(queue) }
             onSelectFolder={ path => this.props.history.push(`/browse/${host}/${path}`) }
-            onSelectTrack={ (track, queue) => this.playPauseTrack(track, location, path, queue) }
+            onSelectTrack={ track => this.playPauseTrack(track, location, path) }
             { ...{ path, location, sortCriteria, albumartSwatches, playingState, playingTime, playingTrack } }>
         </Browser>
     }
