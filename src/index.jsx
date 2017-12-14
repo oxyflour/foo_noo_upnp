@@ -135,10 +135,7 @@ class Main extends React.Component {
         this.setState({ playingTime })
     }
 
-    audio = (audio => {
-        audio.addEventListener('ended', () => this.playNext())
-        return audio
-    })(new Audio())
+    audio = new Audio()
     async playNext(delta = 1) {
         const { playingTrack, playingQueue, playingLocation, playingPath } = this.state
         if (playingTrack && Array.isArray(playingQueue)) {
@@ -172,13 +169,15 @@ class Main extends React.Component {
                 update: { playingQueue },
             })
         } else {
-            this.setState(playingQueue)
+            this.setState({ playingQueue })
         }
     }
     async load(playingTrack, playingLocation, playingPath) {
         if (playingTrack) {
             this.audio.pause()
             this.audio.childNodes.forEach(source => source.parentNode.removeChild(source))
+            this.audio = new Audio()
+            this.audio.addEventListener('ended', () => this.playNext())
             for (const res of playingTrack.resList || [ ]) {
                 const source = document.createElement('source')
                 source.type = res.protocolInfo.split(':').pop()
