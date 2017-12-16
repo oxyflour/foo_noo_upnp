@@ -68,24 +68,29 @@ function updateSortCriteria(sortCriteria, field) {
 
 const upnp = {
     async getSortCapabilities(browserLocation) {
-        try {
-            const result = await fetchJson('/upnp/GetSortCapabilities', {
-                url: browserLocation,
-                inputs: { }
-            })
-            return (result.SortCaps || '').split(',')
-        } catch (err) {
-            console.error(`GetSortCriteria seems not implemented by ${browserLocation}`, err)
-            return [ ]
-        }
+        const result = await fetchJson('/upnp/GetSortCapabilities', {
+            url: browserLocation,
+            inputs: { }
+        })
+        return (result.SortCaps || '').split(',')
     },
     async getDeviceCapabilities(rendererLocation) {
-        const result = await fetchJson('/upnp/GetPositionInfo', {
+        const result = await fetchJson('/upnp/GetDeviceCapabilities', {
             url: rendererLocation,
             inputs: { }
         })
-        return result
-    }
+        return result.Caps
+    },
+    async getRendererVolume(rendererLocation, playingInstanceID) {
+        const result = await fetchJson('/upnp-avtransport/GetVolume', {
+            url: rendererLocation,
+            inputs: {
+                InstanceID: playingInstanceID,
+                Channel: 'Master',
+            }
+        })
+        return parseFloat(result.CurrentVolume) / 100
+    },
 }
 
 class Main extends React.Component {
@@ -266,7 +271,7 @@ class Main extends React.Component {
         } else {
             this.setState({ playingVolume: this.audio.volume = volume })
         }
-    }, 200)
+    }, 50)
 
     async getPosition() {
         const { rendererLocation, playingInstanceID } = this.state
@@ -603,15 +608,24 @@ class Main extends React.Component {
             this.ws.emit('upnp-unsub', { url: lastRenderLocation })
         }
         if (rendererLocation) {
-            this.ws.emit('upnp-sub', { url: rendererLocation }, update => this.setState(update))
-            console.log(await upnp.getDeviceCapabilities(rendererLocation))
+            const update = await new Promise(resolve => this.ws.emit('upnp-sub', { url: rendererLocation }, resolve)),
+                playingVolume = await upnp.getRendererVolume(rendererLocation, update.playingInstanceID)
+            this.setState(Object.assign(update, { playingVolume }))
         }
     })
 
     checkBrowseLocationChange = onChange(async browserLocation => {
         await new Promise(resolve => setTimeout(resolve, 10))
 
-        const sortCaps = browserLocation ? await upnp.getSortCapabilities(browserLocation) : [ ]
+        const sortCaps = [ ]
+        if (browserLocation) {
+            try {
+                sortCaps.push.apply(sortCaps, await upnp.getSortCapabilities(browserLocation))
+            } catch (err) {
+                console.error(`GetSortCriteria seems not implemented by ${browserLocation}`, err)
+            }
+        }
+
         this.setState({ sortCaps })
     })
 
