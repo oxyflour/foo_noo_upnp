@@ -120,27 +120,18 @@ class Main extends React.Component {
                 Math.min(window.innerWidth * 0.8, 320)
         this.setState({ isDrawerDocked, drawerWidth })
     }
-    updatePlayer({ data }) {
-        if (data.TransportState === 'PLAYING') {
-            this.setState({ playingState: { isPlaying: true } })
-        } else if (data.TransportState === 'PAUSED_PLAYBACK') {
-            this.setState({ playingState: { isPaused: true } })
-        } else if (data.TransportState === 'STOPPED') {
-            this.setState({ playingState: { isStopped: true } })
-        }
-    }
-
-    tickTimeout = 0
-    async onTick() {
-        clearTimeout(this.tickTimeout)
-        const playingTime = this.state.playingState.isPlaying ? await this.getPosition() : this.state.playingTime,
-            rest = Math.floor(playingTime) + 1 - playingTime,
-            timeout = rest < 0.1 ? rest + 1 : rest
-        this.tickTimeout = setTimeout(() => this.onTick(), timeout * 1000)
-        this.setState({ playingTime })
-    }
 
     audio = new Audio()
+    async startTimer() {
+        clearTimeout(this.audio.playTimer)
+        const playingTime = this.audio.currentTime
+        this.setState({ playingTime })
+        if (!this.audio.paused) {
+            const rest = Math.floor(playingTime) + 1 - playingTime,
+                timeout = rest < 0.1 ? rest + 1 : rest
+            this.audio.playTimer = setTimeout(() => this.startTimer(), timeout * 1000)
+        }
+    }
     async playNext(delta = 1) {
         const { playingTrack, playingQueue, playingLocation, playingPath } = this.state
         if (playingTrack && Array.isArray(playingQueue)) {
@@ -182,6 +173,7 @@ class Main extends React.Component {
             this.audio.pause()
             this.audio.childNodes.forEach(source => source.parentNode.removeChild(source))
             this.audio = new Audio()
+            this.audio.addEventListener('play', () => this.startTimer())
             this.audio.addEventListener('ended', () => this.playNext())
             for (const res of playingTrack.resList || [ ]) {
                 const source = document.createElement('source')
@@ -273,19 +265,6 @@ class Main extends React.Component {
         }
     }, 50)
 
-    async getPosition() {
-        const { rendererLocation, playingInstanceID } = this.state
-        if (rendererLocation) {
-            const url = rendererLocation,
-                ins = playingInstanceID
-            return await new Promise((resolve, reject) => {
-                setTimeout(reject, 30000)
-                this.ws.emit('av-pos', { url, ins }, resolve)
-            })
-        } else {
-            return this.audio.currentTime
-        }
-    }
     beginSearch() {
         const { searchKeyword } = this.state,
             { pathname } = this.props.location
@@ -328,10 +307,8 @@ class Main extends React.Component {
         devices.forEach(dev => this.addDevice(dev))
         this.ws.on('ssdp-found', dev => this.addDevice(dev))
         this.ws.on('ssdp-disappear', dev => this.removeDevice(dev))
-        // this.ws.on('upnp-recv', evt => this.updatePlayer(evt))
         this.ws.on('av-update', update => this.setState(update))
 
-        this.onTick()
         this.updateDrawer()
         window.addEventListener('resize', debounce(() => this.updateDrawer(), 200))
     }
@@ -640,7 +617,9 @@ class Main extends React.Component {
             swatches = await vibrant.getPalette(),
             albumartSwatches = { }
         for (const key in swatches) {
-            albumartSwatches[key] = swatches[key].getHex()
+            if (swatches[key]) {
+                albumartSwatches[key] = swatches[key].getHex()
+            }
         }
         this.setState({ albumartSwatches })
     })
