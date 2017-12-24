@@ -13,6 +13,7 @@ import Drawer from 'material-ui/Drawer'
 import Divider from 'material-ui/Divider'
 import TextField from 'material-ui/TextField'
 import Dialog, { DialogTitle } from 'material-ui/Dialog'
+import Avatar from 'material-ui/Avatar'
 
 import Delete from 'material-ui-icons/Delete'
 import KeyboardArrowLeft from 'material-ui-icons/KeyboardArrowLeft'
@@ -95,23 +96,24 @@ const upnp = {
 
 class Main extends React.Component {
     ws = io()
-    addDevice(dev) {
-        const { location } = dev,
-            { browsers, renderers } = this.state
-        dev.url = url.parse(dev.location)
-        if (dev.st === 'urn:schemas-upnp-org:service:ContentDirectory:1') {
-            const found = browsers.find(dev => dev.location === location)
-            if (!found) this.setState({ browsers: browsers.concat(dev) })
-        } else if (dev.st === 'urn:schemas-upnp-org:service:AVTransport:1') {
-            const found = renderers.find(dev => dev.location === location)
-            if (!found) this.setState({ renderers: renderers.concat(dev) })
+    updateDevices(devices) {
+        const renderers = [ ],
+            browsers = [ ]
+        for (const dev of devices) {
+            const { location } = dev
+            dev.url = url.parse(dev.location)
+            if (dev.st === 'urn:schemas-upnp-org:service:ContentDirectory:1') {
+                browsers.push(dev)
+            } else if (dev.st === 'urn:schemas-upnp-org:service:AVTransport:1') {
+                renderers.push(dev)
+            }
         }
+        this.setState({ renderers, browsers })
     }
-    removeDevice(dev) {
-        const { location } = dev,
-            browsers = this.state.browsers.filter(dev => dev.location !== location),
-            renderers = this.state.renderers.filter(dev => dev.location !== location)
-        this.setState({ browsers, renderers })
+    async pullRendererState(rendererLocation) {
+        const update = await fetchJson(`/av-state/${rendererLocation}`),
+            playingVolume = await upnp.getRendererVolume(rendererLocation, update.playingInstanceID)
+        this.setState(Object.assign(update, { playingVolume }))
     }
     updateDrawer() {
         const isDrawerDocked = window.innerWidth > 768,
@@ -157,10 +159,10 @@ class Main extends React.Component {
             await this.play()
         }
     }
-    async syncQueue(playingQueue) {
+    async pushQueue(playingQueue) {
         const { rendererLocation, playingInstanceID } = this.state
         if (rendererLocation) {
-            await fetchJson('/upnp-avtransport/SyncQueue', {
+            await fetchJson('/upnp-avtransport/Noop', {
                 url: rendererLocation,
                 update: { playingQueue },
             })
@@ -303,11 +305,15 @@ class Main extends React.Component {
         sortCaps: [ ],
     }
     async componentDidMount() {
-        const devices = await fetchJson('/devices')
-        devices.forEach(dev => this.addDevice(dev))
-        this.ws.on('ssdp-found', dev => this.addDevice(dev))
-        this.ws.on('ssdp-disappear', dev => this.removeDevice(dev))
+        this.updateDevices(await fetchJson('/ssdp-devices'))
+
+        this.ws.on('ssdp-update', debounce(devices => this.updateDevices(devices), 100))
         this.ws.on('av-update', update => this.setState(update))
+        this.ws.on('reconnect', () => {
+            const { rendererLocation } = this.state
+            this.ws.emit('upnp-sub', { url: rendererLocation })
+            this.pullRendererState(rendererLocation)
+        })
 
         this.updateDrawer()
         window.addEventListener('resize', debounce(() => this.updateDrawer(), 200))
@@ -321,8 +327,10 @@ class Main extends React.Component {
                 [{
                     primary: 'Browser',
                     secondary: 'output',
-                    value: ''
+                    value: '',
+                    icon: <Avatar><SurroundSound /></Avatar>,
                 }].concat(renderers.map(dev => ({
+                    icon: dev.icons.length ? <Avatar src={ dev.icons[0].url } /> : <Avatar><SurroundSound /></Avatar>,
                     primary: dev.server,
                     secondary: dev.url.host,
                     value: dev.location,
@@ -347,6 +355,7 @@ class Main extends React.Component {
             onChange={ host => this.props.history.push(`/browse/${host}/`) }
             options={
                 browsers.map(dev => ({
+                    icon: dev.icons.length ? <Avatar src={ dev.icons[0].url } /> : <Avatar><LibraryMusic /></Avatar>,
                     primary: dev.server,
                     secondary: dev.url.host,
                     value: dev.url.host,
@@ -484,7 +493,7 @@ class Main extends React.Component {
                 className="drawer"
                 type={ isDrawerDocked ? 'permanent' : 'temporary' }
                 open={ this.state.isDrawerOpen }
-                onRequestClose={ () => this.setState({ isDrawerOpen: false }) }>
+                onClose={ () => this.setState({ isDrawerOpen: false }) }>
             <div className="player">
                 <div className="options">
                     {
@@ -517,7 +526,7 @@ class Main extends React.Component {
             </div>
             <div className="player-bg" style={{ backgroundImage: `url(${backgroundImageUrl})` }}></div>
             <Dialog open={ isPlayerConfigShown }
-                onRequestClose={ () => this.setState({ isPlayerConfigShown: false }) }>
+                onClose={ () => this.setState({ isPlayerConfigShown: false }) }>
                 <DialogTitle>Player Settings</DialogTitle>
                 <List>
                     <ListItem>
@@ -551,7 +560,7 @@ class Main extends React.Component {
         this.checkBrowseLocationChange(location)
         return <Browser
             onLoadStart={ () => this.setState({ isDrawerOpen: false, isSearchShown: false }) }
-            onSyncQueue={ queue => this.syncQueue(queue) }
+            onSyncQueue={ queue => this.pushQueue(queue) }
             onSelectFolder={ path => this.props.history.push(`/browse/${host}/${path}`) }
             onSelectTrack={ track => this.playPauseTrack(track, location, path) }
             { ...{ path, location, sortCriteria, albumartSwatches, playingState, playingTime, playingTrack } }>
@@ -579,15 +588,14 @@ class Main extends React.Component {
         </div>
     }
 
-    checkRenderLocationChange = onChange(async (rendererLocation, lastRenderLocation) => {
+    checkRenderLocationChange = onChange((rendererLocation, lastRenderLocation) => {
         localStorage.setItem('main-renderer-location', rendererLocation)
         if (lastRenderLocation) {
             this.ws.emit('upnp-unsub', { url: lastRenderLocation })
         }
         if (rendererLocation) {
-            const update = await new Promise(resolve => this.ws.emit('upnp-sub', { url: rendererLocation }, resolve)),
-                playingVolume = await upnp.getRendererVolume(rendererLocation, update.playingInstanceID)
-            this.setState(Object.assign(update, { playingVolume }))
+            this.ws.emit('upnp-sub', { url: rendererLocation })
+            this.pullRendererState(rendererLocation)
         }
     })
 

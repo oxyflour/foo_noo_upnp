@@ -163,7 +163,7 @@ export default class Browser extends React.Component {
                 .map(track => Object.assign(track, { groupBy: track.parentID + '/' + track.upnpAlbum })),
             albums = Array.from(new Set(tracks.map(item => item.groupBy)))
                 .map(group => tracks.find(track => track.groupBy === group))
-        return <List subheader className="album-list">
+        return <List className="album-list">
         {
             albums.map(album => <div className="album" key={ album.groupBy }>
             <ListSubheader className="album-header" disableSticky={ true }>
@@ -237,7 +237,7 @@ export default class Browser extends React.Component {
             <Menu
                 open={ !!containerMenuItem }
                 anchorEl={ containerMenuElem }
-                onRequestClose={ () => this.setState({ containerMenuItem: null }) }>
+                onClose={ () => this.setState({ containerMenuItem: null }) }>
                 <MenuItem onClick={ () => this.searchFolder() }>
                     Display All
                 </MenuItem>

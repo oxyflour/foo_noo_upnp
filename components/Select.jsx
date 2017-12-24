@@ -17,13 +17,16 @@ export default class Select extends React.Component {
             selected = options.find(option => option.value === value)
         return <div>
             { render(selected, () => this.setState({ open: true })) }
-            <Dialog open={ open } onRequestClose={ () => this.setState({ open: false }) }>
+            <Dialog open={ open } onClose={ () => this.setState({ open: false }) }>
                 <DialogTitle>{ title || 'Select An Item' }</DialogTitle>
                 <List style={{ overflow: 'auto' }}>
                 {
                     options.length ? options.map((option, index) => <ListItem
                         key={ option.value } button
                         onClick={ () => this.onSelectOption(option.value) }>
+                        {
+                            option.icon && <ListItemIcon>{ option.icon }</ListItemIcon>
+                        }
                         <ListItemText primary={
                             value === option.value ? <b>[active] { option.primary }</b> : option.primary
                         } secondary={ option.secondary }></ListItemText>

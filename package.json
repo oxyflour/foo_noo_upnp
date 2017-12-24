@@ -23,7 +23,7 @@
     "netmask": "^1.0.6",
     "node-ssdp": "^3.2.1",
     "node-vibrant": "^3.0.0-alpha.2",
-    "peer-upnp": "0.0.5",
+    "peer-upnp": "git+https://github.com/oxyflour/peer-upnp",
     "socket.io": "^2.0.3",
     "uuid": "^3.1.0",
     "xml-escape": "^1.1.0"
