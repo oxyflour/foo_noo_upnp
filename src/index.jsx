@@ -189,10 +189,9 @@ class Main extends React.Component {
         if (rendererLocation) {
             await fetchJson('/upnp-avtransport/SetAVTransportURI', {
                 url: rendererLocation,
-                inputs: {
+                inputs: Object.assign({
                     InstanceID: playingInstanceID,
-                    resList: playingTrack.resList,
-                },
+                }, playingTrack),
                 update: { playingTrack, playingLocation, playingPath, playingInstanceID },
             })
         } else {
