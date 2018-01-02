@@ -179,7 +179,7 @@ class Main extends React.Component {
             this.audio.addEventListener('ended', () => this.playNext())
             for (const res of playingTrack.resList || [ ]) {
                 const source = document.createElement('source')
-                source.type = res.protocolInfo.split(':').pop()
+                source.type = res.protocolInfo.split(':').find(type => type.includes('/'))
                 source.src = res.url
                 this.audio.appendChild(source)
             }
@@ -189,9 +189,10 @@ class Main extends React.Component {
         if (rendererLocation) {
             await fetchJson('/upnp-avtransport/SetAVTransportURI', {
                 url: rendererLocation,
-                inputs: Object.assign({
+                inputs: {
                     InstanceID: playingInstanceID,
-                }, playingTrack),
+                    Metadata: playingTrack,
+                },
                 update: { playingTrack, playingLocation, playingPath, playingInstanceID },
             })
         } else {
