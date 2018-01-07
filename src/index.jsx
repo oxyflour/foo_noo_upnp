@@ -47,8 +47,12 @@ import Select from '../components/Select.jsx'
 import { default as Browser, getTitleMain } from '../components/Browser.jsx'
 import { qsSet, fetchJson, debounce, hhmmss2sec, cssStyleUrl, onChange } from '../common/utils'
 
+function proxiedURL(src) {
+    return 'upnp-proxy/' + src.replace(/^\w+:\/\//, '')
+}
+
 function albumartURL(src) {
-    return cssStyleUrl(src ? 'upnp-proxy/' + src.replace(/^\w+:\/\//, '') : 'assets/thumbnail_default.png') 
+    return cssStyleUrl(src ? proxiedURL(src) : 'assets/thumbnail_default.png') 
 }
 
 const SORT_DISPLAY_NAME = {
@@ -184,7 +188,7 @@ class Main extends React.Component {
             for (const res of playingTrack.resList || [ ]) {
                 const source = document.createElement('source')
                 source.type = res.protocolInfo.split(':').find(type => type.includes('/'))
-                source.src = 'upnp-proxy/' + encodeURI(res.url.replace(/^\w+:\/\//, ''))
+                source.src = proxiedURL(res.url)
                 this.audio.appendChild(source)
             }
             this.audio.load()
@@ -334,7 +338,9 @@ class Main extends React.Component {
                     value: '',
                     icon: <Avatar><SurroundSound /></Avatar>,
                 }].concat(renderers.map(dev => ({
-                    icon: dev.icons.length ? <Avatar src={ dev.icons[0].url } /> : <Avatar><SurroundSound /></Avatar>,
+                    icon: dev.icons.length ?
+                        <Avatar src={ proxiedURL(dev.icons[0].url) } /> :
+                        <Avatar><SurroundSound /></Avatar>,
                     primary: dev.server,
                     secondary: dev.url.host,
                     value: dev.location,
@@ -359,7 +365,9 @@ class Main extends React.Component {
             onChange={ host => this.props.history.push(`/browse/${host}/`) }
             options={
                 browsers.map(dev => ({
-                    icon: dev.icons.length ? <Avatar src={ dev.icons[0].url } /> : <Avatar><LibraryMusic /></Avatar>,
+                    icon: dev.icons.length ?
+                        <Avatar src={ proxiedURL(dev.icons[0].url) } /> :
+                        <Avatar><LibraryMusic /></Avatar>,
                     primary: dev.server,
                     secondary: dev.url.host,
                     value: dev.url.host,
@@ -620,10 +628,9 @@ class Main extends React.Component {
 
     checkAlbumartChange = onChange(async url => {
         if (!url) return
-        await new Promise(resolve => setTimeout(resolve, 10))
 
         const img = document.createElement('img'),
-            src = 'upnp-proxy/' + encodeURI(url.replace(/^\w+:\/\//, ''))
+            src = proxiedURL(url)
         await new Promise((onload, onerror) => Object.assign(img, { src, onload, onerror }))
         const vibrant = new Vibrant(img),
             swatches = await vibrant.getPalette(),
