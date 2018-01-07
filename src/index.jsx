@@ -47,6 +47,10 @@ import Select from '../components/Select.jsx'
 import { default as Browser, getTitleMain } from '../components/Browser.jsx'
 import { qsSet, fetchJson, debounce, hhmmss2sec, cssStyleUrl, onChange } from '../common/utils'
 
+function albumartURL(src) {
+    return cssStyleUrl(src ? 'upnp-proxy/' + src.replace(/^\w+:\/\//, '') : 'assets/thumbnail_default.png') 
+}
+
 const SORT_DISPLAY_NAME = {
     'res@duration': 'Duration',
     'res@size': 'Size',
@@ -180,7 +184,7 @@ class Main extends React.Component {
             for (const res of playingTrack.resList || [ ]) {
                 const source = document.createElement('source')
                 source.type = res.protocolInfo.split(':').find(type => type.includes('/'))
-                source.src = res.url
+                source.src = 'upnp-proxy/' + encodeURI(res.url.replace(/^\w+:\/\//, ''))
                 this.audio.appendChild(source)
             }
             this.audio.load()
@@ -486,7 +490,7 @@ class Main extends React.Component {
         const { isDrawerDocked, isSearchShown, drawerWidth, isPlayerConfigShown } = this.state,
             { sortCaps, albumartSwatches, browsers } = this.state,
             { playingLocation, playingPath, playingTrack, playingState, playingVolume } = this.state,
-            backgroundImageUrl = cssStyleUrl(playingTrack.upnpAlbumArtURI || 'assets/thumbnail_default.png'),
+            backgroundImageUrl = albumartURL(playingTrack.upnpAlbumArtURI),
             { url } = browsers.find(dev => dev.location === playingLocation) || { },
             playingPathName = `/browse/${url && url.host}/${playingPath}`
         return <Drawer
@@ -614,12 +618,12 @@ class Main extends React.Component {
         this.setState({ sortCaps })
     })
 
-    checkAlbumartChange = onChange(async src => {
-        if (!src) return
+    checkAlbumartChange = onChange(async url => {
+        if (!url) return
         await new Promise(resolve => setTimeout(resolve, 10))
 
-        const img = document.createElement('img')
-        img.crossOrigin = 'Anonymous'
+        const img = document.createElement('img'),
+            src = 'upnp-proxy/' + encodeURI(url.replace(/^\w+:\/\//, ''))
         await new Promise((onload, onerror) => Object.assign(img, { src, onload, onerror }))
         const vibrant = new Vibrant(img),
             swatches = await vibrant.getPalette(),

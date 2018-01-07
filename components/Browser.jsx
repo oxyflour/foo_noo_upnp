@@ -25,15 +25,8 @@ import { debounce, hhmmss2sec, sec2mmss, cssStyleUrl, fetchJson, onChange } from
 
 import './Browser.less'
 
-async function getSearchCapabilities(url) {
-    const inputs = { }
-    try {
-        const result = await fetchJson('/upnp/GetSearchCapabilities', { url, inputs })
-        return (result.SearchCaps || '').split(',')
-    } catch (err) {
-        console.error(`GetSortCriteria seems not implemented by ${url}`, err)
-        return [ ]
-    }
+function albumartURL(src) {
+    return cssStyleUrl(src ? 'upnp-proxy/' + src.replace(/^\w+:\/\//, '') : 'assets/thumbnail_default.png') 
 }
 
 async function upnpBrowse(url,
@@ -131,7 +124,7 @@ export default class Browser extends React.Component {
         {
             containers.map(item => <Card className="card" key={ item.id }>
                 <CardMedia className="albumart"
-                    image={ cssStyleUrl(item.upnpAlbumArtURI || 'assets/thumbnail_default.png') }
+                    image={ albumartURL(item.upnpAlbumArtURI) }
                     title="albumart">
                 </CardMedia>
                 <CardContent className="content">
@@ -168,7 +161,7 @@ export default class Browser extends React.Component {
             albums.map(album => <div className="album" key={ album.groupBy }>
             <ListSubheader className="album-header" disableSticky={ true }>
                 <span className="albumart" style={{
-                    backgroundImage: `url(${cssStyleUrl(album.upnpAlbumArtURI || 'assets/thumbnail_default.png')})`
+                    backgroundImage: `url(${albumartURL(album.upnpAlbumArtURI)})`
                 }}></span>
                 <span className="title">
                     <a href="javascript:void(0)"
