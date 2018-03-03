@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "webpack --watch",
-    "build": "npm i && npm run build && npm uninstall * && npm i --production"
+    "build": "webpack"
   },
   "author": "",
   "license": "ISC",

@@ -119,9 +119,14 @@ class Main extends React.Component {
         this.setState({ renderers, browsers })
     }
     async pullRendererState(rendererLocation) {
-        const update = await fetchJson(`/av-state/${rendererLocation}`),
-            playingVolume = await upnp.getRendererVolume(rendererLocation, update.playingInstanceID)
-        this.setState(Object.assign(update, { playingVolume }))
+        if (rendererLocation) {
+            const update = await fetchJson(`/av-state/${rendererLocation}`),
+                playingVolume = await upnp.getRendererVolume(rendererLocation, update.playingInstanceID)
+            this.setState(Object.assign(update, { playingVolume }))
+        } else {
+            const playingVolume = this.audio.volume
+            this.setState({ playingVolume })
+        }
     }
     updateDrawer() {
         const isDrawerDocked = window.innerWidth > 768,
@@ -607,8 +612,8 @@ class Main extends React.Component {
         }
         if (rendererLocation) {
             this.ws.emit('upnp-sub', { url: rendererLocation })
-            this.pullRendererState(rendererLocation)
         }
+        this.pullRendererState(rendererLocation)
     })
 
     checkBrowseLocationChange = onChange(async browserLocation => {
