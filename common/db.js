@@ -2,6 +2,8 @@ const mediaReference = { },
     mediaListStore = { },
     mediaIdCache = { }
 
+let searchCache = { }
+
 function addMedia(item) {
     item.path = item.filePath.substr(0, item.filePath.length - item.path.length - 1)
         .split('\\').pop() + '\\' + item.path
@@ -25,6 +27,7 @@ function addMedia(item) {
             time: Math.max(item.time, dirMeta.time || 0),
         })
     })
+    searchCache = { }
 }
 
 function removeMedia(item) {
@@ -41,11 +44,13 @@ function removeMedia(item) {
             delete dirRef[subPath]
         }
     })
+    searchCache = { }
 }
 
 function updateMedia(item) {
     const id = mediaIdCache[item.filePath + '?' + item.subsong]
     mediaListStore[id] = Object.assign({ type: 'item', id }, item)
+    searchCache = { }
 }
 
 function browseMeta(id) {
@@ -62,11 +67,12 @@ function checkKeyword(item, keyword) {
 
 function searchItems(id, keyword) {
     keyword = keyword.toLowerCase()
-    return Object.values(mediaReference[id] || { })
+    const cacheKey = id + ':cache:' + keyword
+    return searchCache[cacheKey] || (searchCache[cacheKey] = Object.values(mediaReference[id] || { })
         .reduce((arr, ids) => arr.concat(ids), [ ])
         .map(id => mediaListStore[id])
         .filter(item => item)
-        .filter(item => !keyword || checkKeyword(item, keyword))
+        .filter(item => !keyword || checkKeyword(item, keyword)))
 }
 
 module.exports = { addMedia, removeMedia, updateMedia, browseChild, browseMeta, searchItems }
