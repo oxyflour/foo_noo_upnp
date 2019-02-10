@@ -448,7 +448,8 @@ class Main extends React.Component {
                 <Menu />
             </IconButton>
             <Typography className="title" type="title" style={{ flex: 1 }}>
-                <Select value={ folderName }
+                <Select title="Go to..."
+                    value={ folderName }
                     onChange={
                         field => {
                             this.props.history.push(`/browse/${host}/${field}`)
@@ -550,7 +551,7 @@ class Main extends React.Component {
                 <DialogTitle>Player Settings</DialogTitle>
                 <List>
                     <ListItem>
-                        <ListItemIcon>
+                        <ListItemIcon title="volume">
                             <VolumeUp />
                         </ListItemIcon>
                         <Tooltip
@@ -566,11 +567,11 @@ class Main extends React.Component {
                         </Tooltip>
                     </ListItem>
                     <ListItem>
-                        <ListItemIcon>
+                        <ListItemIcon title="prefered media type">
                             <MusicNote />
                         </ListItemIcon>
                         <select value={ preferType } onChange={ evt => this.setState({ preferType: evt.target.value }) }>
-                            <option value="">none</option>
+                            <option value="">auto</option>
                             <option value="mp3">mp3</option>
                             <option value="wav">wav</option>
                         </select>
