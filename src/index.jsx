@@ -15,16 +15,10 @@ import TextField from 'material-ui/TextField'
 import Dialog, { DialogTitle } from 'material-ui/Dialog'
 import Avatar from 'material-ui/Avatar'
 
-import Delete from 'material-ui-icons/Delete'
-import KeyboardArrowLeft from 'material-ui-icons/KeyboardArrowLeft'
-import Drafts from 'material-ui-icons/Drafts'
 import Mail from 'material-ui-icons/Mail'
-import Report from 'material-ui-icons/Report'
-import Send from 'material-ui-icons/Send'
-import Star from 'material-ui-icons/Star'
 import Menu from 'material-ui-icons/Menu'
-import Info from 'material-ui-icons/Info'
 import Search from 'material-ui-icons/Search'
+import MusicNote from 'material-ui-icons/MusicNote'
 import Close from 'material-ui-icons/Close'
 import LibraryMusic from 'material-ui-icons/LibraryMusic'
 import Phonelink from 'material-ui-icons/Phonelink'
@@ -36,8 +30,6 @@ import PauseCircleOutline from 'material-ui-icons/PauseCircleOutline'
 import PlaylistPlay from 'material-ui-icons/PlaylistPlay'
 import MoreVert from 'material-ui-icons/MoreVert'
 import VolumeUp from 'material-ui-icons/VolumeUp'
-import VolumeDown from 'material-ui-icons/VolumeDown'
-import VolumeMute from 'material-ui-icons/VolumeMute'
 
 import { HashRouter, Route, Redirect, Switch } from 'react-router-dom'
 
@@ -456,7 +448,24 @@ class Main extends React.Component {
                 <Menu />
             </IconButton>
             <Typography className="title" type="title" style={{ flex: 1 }}>
-                { folderName }
+                <Select value={ folderName }
+                    onChange={
+                        field => {
+                            this.props.history.push(`/browse/${host}/${field}`)
+                        }
+                    }
+                    options={
+                        [''].concat(pathSplit).slice(0, -1).map((dirname, index) => ({
+                            primary: dirname || 'Root',
+                            value: pathSplit.slice(0, index).join('/'),
+                        }))
+                    }
+                    render={
+                        (selected, onClick) => <span style={{ cursor: 'pointer' }} onClick={ onClick }>
+                            { folderName }
+                        </span>
+                    }>
+                </Select>
             </Typography>
             <IconButton onClick={ () => this.setState({ isSearchShown: true }) }>
                 <Search />
@@ -558,7 +567,7 @@ class Main extends React.Component {
                     </ListItem>
                     <ListItem>
                         <ListItemIcon>
-                            <PlayCircleOutline />
+                            <MusicNote />
                         </ListItemIcon>
                         <select value={ preferType } onChange={ evt => this.setState({ preferType: evt.target.value }) }>
                             <option value="">none</option>
