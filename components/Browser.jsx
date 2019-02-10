@@ -191,7 +191,7 @@ export default class Browser extends React.Component {
                             <span className="artist">{ item.upnpArtist }</span>
                         }>
                     </ListItemText>
-                    <ListItemSecondaryAction>
+                    <ListItemSecondaryAction className="action">
                         { item.id === playingTrack.id && sec2mmss(playingTime) + ' / ' }
                         { item.resList && sec2mmss(hhmmss2sec(item.resList[0].duration || '')) }
                         {

@@ -1,0 +1,57 @@
+.player {
+    .control {
+        position: fixed;
+        z-index: 9999;
+        height: 0;
+        left: 0;
+        right: 0;
+        bottom: 10px;
+        overflow: hidden;
+        background: white;
+        transition: height 0.2s;
+        transition-delay: 0.8s;
+        display: flex;
+        flex-direction: row;
+
+        .albumart {
+            background-image: url(assets/thumbnail_default.png);
+            width: 128px;
+            background-position-y: 50%;
+            background-size: cover;
+        }
+
+        .status {
+            flex: 1;
+            height: 100%;
+
+            .content {
+                padding: 20px;
+            }
+        }
+    }
+    .progress {
+        position: fixed;
+        z-index: 9999;
+        height: 10px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #efefef;
+
+        .bar {
+            height: 10px;
+            background: #888;
+            transition: width 0.2s;
+        }
+    }
+}
+
+.player:hover {
+    .control, .albumart {
+        height: 96px;
+    }
+    .control {
+        transition: height 0.1s;
+        transition-delay: 0;
+    }
+}

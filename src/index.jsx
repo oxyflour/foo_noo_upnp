@@ -46,13 +46,10 @@ import './index.less'
 import Select from '../components/Select.jsx'
 import { default as Browser, getTitleMain } from '../components/Browser.jsx'
 import { qsSet, fetchJson, debounce, hhmmss2sec, cssStyleUrl, onChange } from '../common/utils'
-
-function proxiedURL(src) {
-    return 'upnp-proxy/' + src.replace(/^\w+:\/\//, '')
-}
+import Tooltip from 'material-ui/Tooltip'
 
 function albumartURL(src) {
-    return cssStyleUrl(src ? proxiedURL(src) : 'assets/thumbnail_default.png') 
+    return cssStyleUrl(src ? 'upnp-proxy/' + src.replace(/^\w+:\/\//, '') : 'assets/thumbnail_default.png') 
 }
 
 const SORT_DISPLAY_NAME = {
@@ -119,14 +116,9 @@ class Main extends React.Component {
         this.setState({ renderers, browsers })
     }
     async pullRendererState(rendererLocation) {
-        if (rendererLocation) {
-            const update = await fetchJson(`/av-state/${rendererLocation}`),
-                playingVolume = await upnp.getRendererVolume(rendererLocation, update.playingInstanceID)
-            this.setState(Object.assign(update, { playingVolume }))
-        } else {
-            const playingVolume = this.audio.volume
-            this.setState({ playingVolume })
-        }
+        const update = await fetchJson(`/av-state/${rendererLocation}`),
+            playingVolume = await upnp.getRendererVolume(rendererLocation, update.playingInstanceID)
+        this.setState(Object.assign(update, { playingVolume }))
     }
     updateDrawer() {
         const isDrawerDocked = window.innerWidth > 768,
@@ -184,16 +176,20 @@ class Main extends React.Component {
         }
     }
     async load(playingTrack, playingLocation, playingPath) {
+        const { preferType } = this.state
         if (playingTrack) {
             this.audio.pause()
             this.audio.childNodes.forEach(source => source.parentNode.removeChild(source))
             this.audio = new Audio()
             this.audio.addEventListener('play', () => this.startTimer())
             this.audio.addEventListener('ended', () => this.playNext())
-            for (const res of playingTrack.resList || [ ]) {
+            const resList = (playingTrack.resList || [ ]).slice(),
+                res1 = resList.filter(res =>  res.protocolInfo.includes(preferType)),
+                res2 = resList.filter(res => !res.protocolInfo.includes(preferType))
+            for (const res of res1.concat(res2)) {
                 const source = document.createElement('source')
                 source.type = res.protocolInfo.split(':').find(type => type.includes('/'))
-                source.src = proxiedURL(res.url)
+                source.src = 'upnp-proxy/' + encodeURI(res.url.replace(/^\w+:\/\//, ''))
                 this.audio.appendChild(source)
             }
             this.audio.load()
@@ -295,6 +291,7 @@ class Main extends React.Component {
         browsers: [ ],
 
         isPlayerConfigShown: false,
+        isUpdatingVolume: false,
 
         isDrawerOpen: false,
         isDrawerDocked: false,
@@ -316,6 +313,7 @@ class Main extends React.Component {
         albumartSwatches: { },
 
         sortCaps: [ ],
+        preferType: '',
     }
     async componentDidMount() {
         this.updateDevices(await fetchJson('/ssdp-devices'))
@@ -343,9 +341,7 @@ class Main extends React.Component {
                     value: '',
                     icon: <Avatar><SurroundSound /></Avatar>,
                 }].concat(renderers.map(dev => ({
-                    icon: dev.icons.length ?
-                        <Avatar src={ proxiedURL(dev.icons[0].url) } /> :
-                        <Avatar><SurroundSound /></Avatar>,
+                    icon: dev.icons.length ? <Avatar src={ dev.icons[0].url } /> : <Avatar><SurroundSound /></Avatar>,
                     primary: dev.server,
                     secondary: dev.url.host,
                     value: dev.location,
@@ -370,9 +366,7 @@ class Main extends React.Component {
             onChange={ host => this.props.history.push(`/browse/${host}/`) }
             options={
                 browsers.map(dev => ({
-                    icon: dev.icons.length ?
-                        <Avatar src={ proxiedURL(dev.icons[0].url) } /> :
-                        <Avatar><LibraryMusic /></Avatar>,
+                    icon: dev.icons.length ? <Avatar src={ dev.icons[0].url } /> : <Avatar><LibraryMusic /></Avatar>,
                     primary: dev.server,
                     secondary: dev.url.host,
                     value: dev.url.host,
@@ -500,15 +494,15 @@ class Main extends React.Component {
         </List>
     }
     renderDrawer() {
-        const { isDrawerDocked, isSearchShown, drawerWidth, isPlayerConfigShown } = this.state,
-            { sortCaps, albumartSwatches, browsers } = this.state,
+        const { isDrawerDocked, drawerWidth, isPlayerConfigShown, isUpdatingVolume } = this.state,
+            { albumartSwatches, browsers, preferType } = this.state,
             { playingLocation, playingPath, playingTrack, playingState, playingVolume } = this.state,
             backgroundImageUrl = albumartURL(playingTrack.upnpAlbumArtURI),
             { url } = browsers.find(dev => dev.location === playingLocation) || { },
             playingPathName = `/browse/${url && url.host}/${playingPath}`
         return <Drawer
                 className="drawer"
-                type={ isDrawerDocked ? 'permanent' : 'temporary' }
+                variant={ isDrawerDocked ? 'permanent' : 'temporary' }
                 open={ this.state.isDrawerOpen }
                 onClose={ () => this.setState({ isDrawerOpen: false }) }>
             <div className="player">
@@ -548,14 +542,29 @@ class Main extends React.Component {
                 <List>
                     <ListItem>
                         <ListItemIcon>
-                            {
-                                playingVolume > 0.5 ? <VolumeUp /> :
-                                playingVolume > 0 ? <VolumeDown /> :
-                                    <VolumeMute />
-                            }
+                            <VolumeUp />
                         </ListItemIcon>
-                        <input type="range" min="0" max="1" step="0.01" value={ playingVolume }
-                            onChange={ evt => this.setVolumeDebounced(parseFloat(evt.target.value)) } />
+                        <Tooltip
+                            placement="top"
+                            open={ isUpdatingVolume }
+                            title={ '' + Math.floor(playingVolume * 100) }>
+                            <input type="range" min="0" max="1" step="0.01" value={ playingVolume }
+                                onTouchStart={ () => this.setState({ isUpdatingVolume: true }) }
+                                onTouchEnd={ () => this.setState({ isUpdatingVolume: false }) }
+                                onMouseDown={ () => this.setState({ isUpdatingVolume: true }) }
+                                onMouseUp={ () => this.setState({ isUpdatingVolume: false }) }
+                                onChange={ evt => this.setVolumeDebounced(parseFloat(evt.target.value)) } />
+                        </Tooltip>
+                    </ListItem>
+                    <ListItem>
+                        <ListItemIcon>
+                            <PlayCircleOutline />
+                        </ListItemIcon>
+                        <select value={ preferType } onChange={ evt => this.setState({ preferType: evt.target.value }) }>
+                            <option value="">none</option>
+                            <option value="mp3">mp3</option>
+                            <option value="wav">wav</option>
+                        </select>
                     </ListItem>
                 </List>
             </Dialog>
@@ -612,8 +621,8 @@ class Main extends React.Component {
         }
         if (rendererLocation) {
             this.ws.emit('upnp-sub', { url: rendererLocation })
+            this.pullRendererState(rendererLocation)
         }
-        this.pullRendererState(rendererLocation)
     })
 
     checkBrowseLocationChange = onChange(async browserLocation => {
@@ -633,9 +642,10 @@ class Main extends React.Component {
 
     checkAlbumartChange = onChange(async url => {
         if (!url) return
+        await new Promise(resolve => setTimeout(resolve, 10))
 
         const img = document.createElement('img'),
-            src = proxiedURL(url)
+            src = 'upnp-proxy/' + encodeURI(url.replace(/^\w+:\/\//, ''))
         await new Promise((onload, onerror) => Object.assign(img, { src, onload, onerror }))
         const vibrant = new Vibrant(img),
             swatches = await vibrant.getPalette(),
