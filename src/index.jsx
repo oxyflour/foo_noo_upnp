@@ -448,7 +448,7 @@ class Main extends React.Component {
                 <Menu />
             </IconButton>
             <Typography className="title" type="title" style={{ flex: 1 }}>
-                <Select title="Go to..."
+                <Select title="Go to Directory"
                     value={ folderName }
                     onChange={
                         field => {

@@ -496,4 +496,74 @@ const renderingControlDescription = {
     },
 }
 
-module.exports = { devOpts, contentDirectoryDescription, avTransportDescription, renderingControlDescription }
+const connectionManagerDescription = {
+    actions: {
+        GetProtocolInfo: {
+            inputs: {
+            },
+            outputs: {
+                Source: 'SourceProtocolInfo',
+                Sink: 'SinkProtocolInfo',
+            },
+        },
+        GetCurrentConnectionIDs: {
+            inputs: {
+            },
+            outputs: {
+                ConnectionIDs: 'CurrentConnectionIDs',
+            },
+        },
+        GetCurrentConnectionInfo: {
+            inputs: {
+                ConnectionID: 'A_ARG_TYPE_ConnectionID',
+            },
+            outputs: {
+                RcsID: 'A_ARG_TYPE_RcsID',
+                AVTransportID: 'A_ARG_TYPE_AVTransportID',
+                ProtocolInfo: 'A_ARG_TYPE_ProtocolInfo',
+                PeerConnectionManager: 'A_ARG_TYPE_ConnectionManager',
+                PeerConnectionID: 'A_ARG_TYPE_ConnectionID',
+                Direction: 'A_ARG_TYPE_Direction',
+                Status: 'A_ARG_TYPE_ConnectionStatus',
+            },
+        },
+    },
+    variables: {
+        SourceProtocolInfo: {
+            event: true,
+            type: 'string',
+        },
+        SinkProtocolInfo: {
+            event: true,
+            type: 'string',
+        },
+        CurrentConnectionIDs: {
+            event: true,
+            type: 'string',
+        },
+        A_ARG_TYPE_ConnectionStatus: {
+            type: 'string',
+            enum: [
+                'OK',
+                'ContentFormatMismatch',
+                'InsufficientBandwidth',
+                'UnreliableChannel',
+                'Unknown',
+            ],
+        },
+        A_ARG_TYPE_ConnectionManager: 'string',
+        A_ARG_TYPE_Direction: {
+            type: 'string',
+            enum: [
+                'Input',
+                'Output',
+            ],
+        },
+        A_ARG_TYPE_ProtocolInfo: 'string',
+        A_ARG_TYPE_ConnectionID: 'i4',
+        A_ARG_TYPE_AVTransportID: 'i4',
+        A_ARG_TYPE_RcsID: 'i4',
+    },
+}
+
+module.exports = { devOpts, contentDirectoryDescription, avTransportDescription, renderingControlDescription, connectionManagerDescription }
