@@ -294,7 +294,7 @@ class Main extends React.Component {
         searchKeyword: '',
 
         rendererLocation: localStorage.getItem('main-renderer-location') || '',
-        playingVolume: 0,
+        playingVolume: 1,
         playingTrack: { },
         playingTime: 0,
         playingState: { isStopped: true },
