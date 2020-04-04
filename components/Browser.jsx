@@ -53,6 +53,11 @@ export function getTitleSub(title) {
 const browserCache = { },
     browserScrollTop = { }
 export default class Browser extends React.Component {
+    async reload() {
+        const key = this.getCacheKey()
+        delete browserCache[key]
+        await this.beginLoad()
+    }
     async beginLoad() {
         await new Promise(resolve => setTimeout(resolve, 10))
         const { location, path } = this.props,

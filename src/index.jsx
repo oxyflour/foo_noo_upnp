@@ -15,7 +15,8 @@ import TextField from 'material-ui/TextField'
 import Dialog, { DialogTitle } from 'material-ui/Dialog'
 import Avatar from 'material-ui/Avatar'
 
-import Mail from 'material-ui-icons/Mail'
+import Sort from 'material-ui-icons/Sort'
+import Refresh from 'material-ui-icons/Refresh'
 import Menu from 'material-ui-icons/Menu'
 import Search from 'material-ui-icons/Search'
 import MusicNote from 'material-ui-icons/MusicNote'
@@ -496,11 +497,15 @@ class Main extends React.Component {
                 }
                 render={
                     (selected, onClick) => <ListItem button onClick={ onClick }>
-                        <ListItemIcon><Mail /></ListItemIcon>
+                        <ListItemIcon><Sort /></ListItemIcon>
                         <ListItemText primary={ `Sort: ${ sortCriteria || 'None'}` } />
                     </ListItem>
                 }>
             </Select>
+            <ListItem button onClick={ () => this.browser && this.browser.reload() }>
+                <ListItemIcon><Refresh /></ListItemIcon>
+                <ListItemText primary="Refresh" />
+            </ListItem>
         </List>
     }
     renderDrawer() {
@@ -588,6 +593,7 @@ class Main extends React.Component {
                 render={ props => this.renderBrowserTools(props.match.params.host, props.match.params[0]) } />
         </Drawer>
     }
+    browser = null
     renderBrowser(host, path) {
         const { browsers, playingTrack, playingState, playingTime, albumartSwatches } = this.state,
             { location } = browsers.find(dev => dev.url.host === host) || { },
@@ -595,6 +601,7 @@ class Main extends React.Component {
             sortCriteria = localStorage.getItem(saveKey) || ''
         this.checkBrowseLocationChange(location)
         return <Browser
+            ref={ browser => this.browser = browser }
             onLoadStart={ () => this.setState({ isDrawerOpen: false, isSearchShown: false }) }
             onSyncQueue={ queue => this.pushQueue(queue) }
             onSelectFolder={ path => this.props.history.push(`/browse/${host}/${path}`) }
