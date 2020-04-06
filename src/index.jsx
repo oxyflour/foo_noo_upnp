@@ -12,8 +12,9 @@ import IconButton from 'material-ui/IconButton'
 import Drawer from 'material-ui/Drawer'
 import Divider from 'material-ui/Divider'
 import TextField from 'material-ui/TextField'
-import Dialog, { DialogTitle } from 'material-ui/Dialog'
+import Dialog, { DialogContent, DialogActions, DialogTitle } from 'material-ui/Dialog'
 import Avatar from 'material-ui/Avatar'
+import Tooltip from 'material-ui/Tooltip'
 
 import Sort from 'material-ui-icons/Sort'
 import Refresh from 'material-ui-icons/Refresh'
@@ -29,17 +30,19 @@ import SkipNext from 'material-ui-icons/SkipNext'
 import PlayCircleOutline from 'material-ui-icons/PlayCircleOutline'
 import PauseCircleOutline from 'material-ui-icons/PauseCircleOutline'
 import PlaylistPlay from 'material-ui-icons/PlaylistPlay'
+import PlaylistAdd from 'material-ui-icons/PlaylistAdd'
 import MoreVert from 'material-ui-icons/MoreVert'
 import VolumeUp from 'material-ui-icons/VolumeUp'
+import Delete from 'material-ui-icons/Delete'
+import SelectAll from 'material-ui-icons/SelectAll'
 
 import { HashRouter, Route, Redirect, Switch } from 'react-router-dom'
 
 import './index.less'
 
 import Select from '../components/Select.jsx'
-import { default as Browser, getTitleMain } from '../components/Browser.jsx'
-import { qsSet, fetchJson, debounce, hhmmss2sec, cssStyleUrl, onChange } from '../common/utils'
-import Tooltip from 'material-ui/Tooltip'
+import { default as Browser, getTitleMain, upnpBrowse } from '../components/Browser.jsx'
+import { fetchJson, debounce, hhmmss2sec, cssStyleUrl, onChange } from '../common/utils'
 
 function albumartURL(src) {
     return cssStyleUrl(src ? 'upnp-proxy/' + src.replace(/^\w+:\/\//, '') : 'assets/thumbnail_default.png') 
@@ -92,13 +95,54 @@ const upnp = {
     },
 }
 
+class PlaylistSelector extends React.Component {
+    state = {
+        sub: [],
+    }
+    update = onChange(async path => {
+        const dirs = await upnpBrowse(this.props.location, path, 0, 99, ''),
+            sub = dirs.filter(item => item.upnpClass.startsWith('object.container'))
+        this.setState({ sub })
+    })
+    create() {
+        const path = prompt('input the new playlist name')
+        if (path) {
+            this.props.onSelect(this.props.path + '/' + path)
+        }
+    }
+    render() {
+        const { sub } = this.state,
+            { path } = this.props
+        this.update(path)
+        return <Dialog open={ true }>
+            <DialogTitle>Select {path}</DialogTitle>
+            <DialogContent>
+                <List>
+                {
+                    sub.map(item => <ListItem button>
+                        <ListItemText onClick={ () => this.props.onChange(item.id) }
+                            primary={ item.dcTitle }></ListItemText>
+                    </ListItem>)
+                }
+                <ListItem button onClick={ () => this.create() }>
+                    <ListItemText>[ Create New ]</ListItemText>
+                </ListItem>
+                </List>
+            </DialogContent>
+            <DialogActions>
+                <Button color="primary" onClick={ () => this.props.onChange('') }>Cancel</Button>
+                <Button color="primary" onClick={ () => this.props.onSelect(path) }>Choose Here</Button>
+            </DialogActions>
+        </Dialog>
+    }
+}
+
 class Main extends React.Component {
     ws = io()
     updateDevices(devices) {
         const renderers = [ ],
             browsers = [ ]
         for (const dev of devices) {
-            const { location } = dev
             dev.url = url.parse(dev.location)
             if (dev.st === 'urn:schemas-upnp-org:service:ContentDirectory:1') {
                 browsers.push(dev)
@@ -279,6 +323,38 @@ class Main extends React.Component {
         this.setState({ searchKeyword: '', isSearchShown: false })
     }
 
+    async showPlaylistSelector() {
+        if (this.browser) {
+            const { list, selected } = this.browser.state,
+                selectedTracks = list.filter(item => selected[item.id])
+            this.setState({ selectedTracks, playlistToAddTrack: 'Playlists' })
+        }
+        this.setState({ isSelectingTracks: false })
+    }
+    async removeTracksFromPlaylist(location, path) {
+        const [, sub] = path.match(/^Playlists\/(.*)/) || [ ]
+        if (sub) {
+            const added = { }, list = await upnpBrowse(location, path, 0, 99)
+            for (const item of this.state.selectedTracks) {
+                added[item.id] = item
+            }
+            await fetchJson('/playlist/' + sub, list.filter(item => !added[item.id]))
+            this.setState({ isSelectingTracks: false })
+            this.browser && this.browser.reload()
+        }
+    }
+    async addTracksToPlaylist(location, path) {
+        const [, sub] = path.match(/^Playlists\/(.*)/) || [ ]
+        if (sub) {
+            const added = { }, list = await upnpBrowse(location, path, 0, 99)
+            for (const item of list.concat(this.state.selectedTracks)) {
+                added[item.id] = item
+            }
+            await fetchJson('/playlist/' + sub, Object.values(added))
+            this.setState({ playlistToAddTrack: '' })
+        }
+    }
+
     state = {
         renderers: [ ],
         browsers: [ ],
@@ -289,6 +365,10 @@ class Main extends React.Component {
         isDrawerOpen: false,
         isDrawerDocked: false,
         drawerWidth: 0,
+
+        isSelectingTracks: false,
+        selectedTracks: [ ],
+        playlistToAddTrack: '',
 
         isSearchShown: false,
         searchKeyword: '',
@@ -399,10 +479,31 @@ class Main extends React.Component {
             </Typography>
         </Toolbar>
     }
+    renderPlaylistToolbar(host, path) {
+        const { location } = this.state.browsers.find(dev => dev.url.host === host) || { }
+        return <div>
+            <IconButton title="Select All"
+                onClick={ () => this.browser && this.browser.selectAll() }>
+                <SelectAll />
+            </IconButton>
+            <IconButton title="Remove"
+                onClick={ () => this.removeTracksFromPlaylist(location, path) }>
+                <Delete />
+            </IconButton>
+            <IconButton title="Add"
+                onClick={ () => this.showPlaylistSelector() }>
+                <PlaylistAdd />
+            </IconButton>
+            <IconButton title="Cancel"
+                onClick={ () => this.setState({ isSelectingTracks: false }) }>
+                <Close />
+            </IconButton>
+        </div>
+    }
     renderBrowserToolbar(host, path) {
-        const { renderers, browsers, isDrawerDocked, drawerWidth, isSearchShown, searchKeyword } = this.state,
+        const { isDrawerDocked, isSearchShown, isSelectingTracks, searchKeyword, playlistToAddTrack } = this.state,
             pathSplit = path ? path.split('/') : [ ],
-            [parentPath, folderName] = [pathSplit.slice(0, -1).join('/'), pathSplit.slice(-1).pop() || 'Root']
+            folderName = pathSplit.slice(-1).pop() || 'Root'
         return isDrawerDocked ? <Toolbar>
             <Typography className="title" type="title" style={{ flex: 1 }}>
                 {
@@ -410,24 +511,23 @@ class Main extends React.Component {
                         { index > 0 && '/' }
                         <Button
                             onClick={ () => this.props.history.push(`/browse/${host}/${pathSplit.slice(0, index).join('/')}`) }>
-                            { getTitleMain(dirname) || 'Root' }
+                            { getTitleMain(dirname) || (index === 0 ? 'Root' : 'All') }
                         </Button>
                     </span>)
                 }
             </Typography>
             {
-                isSearchShown ?
-                    <TextField placeholder="Search..."
-                        style={{ marginLeft: 16 }}
-                        autoFocus={ true }
-                        value={ searchKeyword }
-                        onBlur={ () => this.setState({ isSearchShown: false }) }
-                        onChange={ evt => this.setState({ searchKeyword: evt.target.value }) }
-                        onKeyDown={ evt => evt.which === 13 && this.beginSearch() }>
-                    </TextField> :
-                    <IconButton onClick={ () => this.setState({ isSearchShown: true }) }>
-                        <Search />
-                    </IconButton>
+                isSelectingTracks ? this.renderPlaylistToolbar(host, path) :
+                isSearchShown ? <TextField placeholder="Search..."
+                    style={{ marginLeft: 16 }}
+                    autoFocus={ true }
+                    value={ searchKeyword }
+                    onBlur={ () => this.setState({ isSearchShown: false }) }
+                    onChange={ evt => this.setState({ searchKeyword: evt.target.value }) }
+                    onKeyDown={ evt => evt.which === 13 && this.beginSearch() }>
+                </TextField> : <IconButton onClick={ () => this.setState({ isSearchShown: true }) }>
+                    <Search />
+                </IconButton>
             }
         </Toolbar> : isSearchShown ?
         <Toolbar>
@@ -469,13 +569,16 @@ class Main extends React.Component {
                     }>
                 </Select>
             </Typography>
-            <IconButton onClick={ () => this.setState({ isSearchShown: true }) }>
-                <Search />
-            </IconButton>
+            {
+                isSelectingTracks ? this.renderPlaylistToolbar(host, path) :
+                <IconButton onClick={ () => this.setState({ isSearchShown: true }) }>
+                    <Search />
+                </IconButton>
+            }
         </Toolbar>
     }
     renderBrowserTools(host, path) {
-        const { browsers, sortCaps } = this.state,
+        const { browsers, sortCaps, playlistToAddTrack } = this.state,
             { location } = browsers.find(dev => dev.url.host === host) || { },
             saveKey = `browser-sort-${location}-${path}`,
             sortCriteria = localStorage.getItem(saveKey) || ''
@@ -506,6 +609,13 @@ class Main extends React.Component {
                 <ListItemIcon><Refresh /></ListItemIcon>
                 <ListItemText primary="Refresh" />
             </ListItem>
+            {
+                playlistToAddTrack && <PlaylistSelector
+                    location={ location }
+                    path={ playlistToAddTrack }
+                    onChange={ playlistToAddTrack => this.setState({ playlistToAddTrack }) }
+                    onSelect={ path => this.addTracksToPlaylist(location, path) } />
+            }
         </List>
     }
     renderDrawer() {
@@ -593,15 +703,16 @@ class Main extends React.Component {
                 render={ props => this.renderBrowserTools(props.match.params.host, props.match.params[0]) } />
         </Drawer>
     }
-    browser = null
     renderBrowser(host, path) {
-        const { browsers, playingTrack, playingState, playingTime, albumartSwatches } = this.state,
+        const { browsers, playingTrack, playingState, playingTime, albumartSwatches, isSelectingTracks } = this.state,
             { location } = browsers.find(dev => dev.url.host === host) || { },
             saveKey = `browser-sort-${location}-${path}`,
             sortCriteria = localStorage.getItem(saveKey) || ''
         this.checkBrowseLocationChange(location)
         return <Browser
             ref={ browser => this.browser = browser }
+            isSelectingTracks={ isSelectingTracks }
+            onBeginSelectTracks={ selectedTracks => this.setState({ selectedTracks, isSelectingTracks: selectedTracks.length > 0 }) }
             onLoadStart={ () => this.setState({ isDrawerOpen: false, isSearchShown: false }) }
             onSyncQueue={ queue => this.pushQueue(queue) }
             onSelectFolder={ path => this.props.history.push(`/browse/${host}/${path}`) }

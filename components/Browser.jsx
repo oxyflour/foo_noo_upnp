@@ -20,6 +20,9 @@ import Info from 'material-ui-icons/Info'
 import PlayArrow from 'material-ui-icons/PlayArrow'
 import Pause from 'material-ui-icons/Pause'
 import MoreVert from 'material-ui-icons/MoreVert'
+import Check from 'material-ui-icons/Check'
+import Close from 'material-ui-icons/Close'
+import CheckBoxOutlineBlank from 'material-ui-icons/CheckBoxOutlineBlank'
 
 import { debounce, hhmmss2sec, sec2mmss, cssStyleUrl, fetchJson, onChange } from '../common/utils'
 
@@ -29,7 +32,7 @@ function albumartURL(src) {
     return cssStyleUrl(src ? 'upnp-proxy/' + src.replace(/^\w+:\/\//, '') : 'assets/thumbnail_default.png') 
 }
 
-async function upnpBrowse(url,
+export async function upnpBrowse(url,
         ObjectID = '0', StartingIndex = 0, RequestedCount = 10,
         SortCriteria = '', SearchCriteria) {
     const Filter = '', BrowseFlag = 'BrowseDirectChildren', ContainerID = ObjectID,
@@ -108,9 +111,28 @@ export default class Browser extends React.Component {
         }
     }
 
+    beginSelectTrack(item) {
+        const { selected } = this.state
+        if (selected[item.id]) {
+            delete selected[item.id]
+        } else {
+            selected[item.id] = item
+        }
+        this.props.onBeginSelectTracks(Object.values(selected))
+    }
+    async selectAll() {
+        const list = await this.loadMore(99)
+        const { selected } = this.state
+        for (const item of list) {
+            selected[item.id] = item
+        }
+        this.props.onBeginSelectTracks(Object.values(selected))
+    }
+
     state = {
         hasMore: true,
         list: [ ],
+        selected: { },
         containerMenuItem: null,
         containerMenuElem: null,
     }
@@ -155,15 +177,18 @@ export default class Browser extends React.Component {
         </Grid>
     }
     renderTracks() {
-        const { playingTrack, playingState, onSelectFolder, playingTime, albumartSwatches } = this.props,
-            { list } = this.state,
-            tracks = list.filter(item => item.upnpClass === 'object.item.audioItem.musicTrack')
-                .map(track => Object.assign(track, { groupBy: track.parentID + '/' + track.upnpAlbum })),
-            albums = Array.from(new Set(tracks.map(item => item.groupBy)))
-                .map(group => tracks.find(track => track.groupBy === group))
+        const { playingTrack, playingState, onSelectFolder, playingTime, albumartSwatches, isSelectingTracks } = this.props,
+            { list, selected } = this.state,
+            tracks = list.filter(item => item.upnpClass === 'object.item.audioItem.musicTrack'),
+            albums = { }
+        for (const track of tracks) {
+            const groupBy = track.parentID + '/' + track.upnpAlbum,
+                album = albums[groupBy] || (albums[groupBy] = Object.assign({ groupBy, tracks: [] }, track))
+            album.tracks.push(track)
+        }
         return <List className="album-list">
         {
-            albums.map(album => <div className="album" key={ album.groupBy }>
+            Object.values(albums).map(album => <div className="album" key={ album.groupBy }>
             <ListSubheader className="album-header" disableSticky={ true }>
                 <span className="albumart" style={{
                     backgroundImage: `url(${albumartURL(album.upnpAlbumArtURI)})`
@@ -177,13 +202,17 @@ export default class Browser extends React.Component {
                 </span>
             </ListSubheader>
             {
-                tracks.filter(track => track.groupBy === album.groupBy).map(item => <ListItem key={ item.id }
+                album.tracks.map(item => <ListItem key={ item.id }
                     button
-                    className={ ['track', item.id === playingTrack.id && 'playing'].join(' ') }
-                    onClick={ () => this.selectTrack(item) }>
-                    <ListItemAvatar>
+                    className={ [
+                        'track',
+                        item.id === playingTrack.id && 'playing',
+                        isSelectingTracks && selected[item.id] && 'selected'
+                    ].join(' ') }>
+                    <ListItemAvatar onClick={ () => this.beginSelectTrack(item) }>
                         <Avatar style={{ backgroundColor: item.id === playingTrack.id ? albumartSwatches.DarkMuted : undefined }}>
                         {
+                            isSelectingTracks ? (selected[item.id] ? <Check /> : ' ') :
                             item.id === playingTrack.id && playingState.isPlaying ? <PlayArrow /> : 
                             item.id === playingTrack.id && playingState.isPaused ? <Pause />:
                                 (item.upnpOriginalTrackNumber % 100 || '?')
@@ -191,6 +220,7 @@ export default class Browser extends React.Component {
                         </Avatar>
                     </ListItemAvatar>
                     <ListItemText
+                        onClick={ () => this.selectTrack(item) }
                         primary={ item.dcTitle }
                         secondary={
                             <span className="artist">{ item.upnpArtist }</span>
@@ -218,8 +248,14 @@ export default class Browser extends React.Component {
         browserScrollTop[lastCacheKey] = document.body.scrollTop
         this.beginLoad()
     })
+    checkIsSelectingTracks = onChange(isSelectingTracks => {
+        if (!isSelectingTracks) {
+            this.setState({ selected: { } })
+        }
+    })
     render() {
         this.checkLocationChange(this.getCacheKey())
+        this.checkIsSelectingTracks(this.props.isSelectingTracks)
         
         const { hasMore, containerMenuItem, containerMenuElem } = this.state
         return <div className="browser">
@@ -239,8 +275,11 @@ export default class Browser extends React.Component {
                 <MenuItem onClick={ () => this.searchFolder() }>
                     Display All
                 </MenuItem>
-                <MenuItem>
+                <MenuItem onClick={ () => this.addToPlaylist() }>
                     Add All to Playlist
+                </MenuItem>
+                <MenuItem onClick={ () => this.createPlaylist() }>
+                    Create Playlist
                 </MenuItem>
             </Menu>
         </div>

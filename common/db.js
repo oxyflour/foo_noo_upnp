@@ -5,11 +5,8 @@ const mediaReference = { },
 let searchCache = { }
 
 function addMedia(item) {
-    item.path = item.filePath.substr(0, item.filePath.length - item.path.length - 1)
-        .split('\\').pop() + '\\' + item.path
-
     const itemId = item.path.replace(/\\/g, '/') + '?' + item.subsong
-        id = mediaIdCache[item.filePath + '?' + item.subsong] = itemId,
+        id = mediaIdCache[item.path + '?' + item.filePath + '?' + item.subsong] = itemId,
         path = id.split('/')
     mediaListStore[id] = Object.assign({ type: 'item', id }, item)
     path.forEach((name, index) => {
@@ -31,7 +28,7 @@ function addMedia(item) {
 }
 
 function removeMedia(item) {
-    const id = mediaIdCache[item.filePath + '?' + item.subsong],
+    const id = mediaIdCache[item.path + '?' + item.filePath + '?' + item.subsong],
         path = id.split('/')
     delete mediaListStore[id]
     path.forEach((name, index) => {
@@ -48,7 +45,7 @@ function removeMedia(item) {
 }
 
 function updateMedia(item) {
-    const id = mediaIdCache[item.filePath + '?' + item.subsong]
+    const id = mediaIdCache[item.path + '?' + item.filePath + '?' + item.subsong]
     mediaListStore[id] = Object.assign({ type: 'item', id }, item)
     searchCache = { }
 }
