@@ -105,7 +105,7 @@ class PlaylistSelector extends React.Component {
         this.setState({ sub })
     })
     create() {
-        const path = prompt('input the new playlist name')
+        const path = prompt('input the new playlist name', this.props.default)
         if (path) {
             this.props.onSelect(this.props.path + '/' + path)
         }
@@ -119,7 +119,7 @@ class PlaylistSelector extends React.Component {
             <DialogContent>
                 <List>
                 {
-                    sub.map(item => <ListItem button>
+                    sub.map(item => <ListItem button key={ item.id }>
                         <ListItemText onClick={ () => this.props.onChange(item.id) }
                             primary={ item.dcTitle }></ListItemText>
                     </ListItem>)
@@ -611,6 +611,7 @@ class Main extends React.Component {
             </ListItem>
             {
                 playlistToAddTrack && <PlaylistSelector
+                    default={ path.replace(/(\/~)?\/$/, '').split('/').pop() }
                     location={ location }
                     path={ playlistToAddTrack }
                     onChange={ playlistToAddTrack => this.setState({ playlistToAddTrack }) }
