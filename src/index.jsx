@@ -41,11 +41,16 @@ import { HashRouter, Route, Redirect, Switch } from 'react-router-dom'
 import './index.less'
 
 import Select from '../components/Select.jsx'
+import PlaylistSelector from '../components/PlaylistSelector.jsx'
 import { default as Browser, getTitleMain, upnpBrowse } from '../components/Browser.jsx'
 import { fetchJson, debounce, hhmmss2sec, cssStyleUrl, onChange } from '../common/utils'
 
+function proxyURL(src) {
+    return 'upnp-proxy/' + encodeURI((src + '').replace(/^\w+:\/\//, ''))
+}
+
 function albumartURL(src) {
-    return cssStyleUrl(src ? 'upnp-proxy/' + src.replace(/^\w+:\/\//, '') : 'assets/thumbnail_default.png') 
+    return cssStyleUrl(src ? proxyURL(src) : 'assets/thumbnail_default.png') 
 }
 
 const SORT_DISPLAY_NAME = {
@@ -93,48 +98,6 @@ const upnp = {
         })
         return parseFloat(result.CurrentVolume) / 100
     },
-}
-
-class PlaylistSelector extends React.Component {
-    state = {
-        sub: [],
-    }
-    update = onChange(async path => {
-        const dirs = await upnpBrowse(this.props.location, path, 0, 99, ''),
-            sub = dirs.filter(item => item.upnpClass.startsWith('object.container'))
-        this.setState({ sub })
-    })
-    create() {
-        const path = prompt('input the new playlist name', this.props.default)
-        if (path) {
-            this.props.onSelect(this.props.path + '/' + path)
-        }
-    }
-    render() {
-        const { sub } = this.state,
-            { path } = this.props
-        this.update(path)
-        return <Dialog open={ true }>
-            <DialogTitle>Select {path}</DialogTitle>
-            <DialogContent>
-                <List>
-                {
-                    sub.map(item => <ListItem button key={ item.id }>
-                        <ListItemText onClick={ () => this.props.onChange(item.id) }
-                            primary={ item.dcTitle }></ListItemText>
-                    </ListItem>)
-                }
-                <ListItem button onClick={ () => this.create() }>
-                    <ListItemText>[ Create New ]</ListItemText>
-                </ListItem>
-                </List>
-            </DialogContent>
-            <DialogActions>
-                <Button color="primary" onClick={ () => this.props.onChange('') }>Cancel</Button>
-                <Button color="primary" onClick={ () => this.props.onSelect(path) }>Choose Here</Button>
-            </DialogActions>
-        </Dialog>
-    }
 }
 
 class Main extends React.Component {
@@ -226,7 +189,7 @@ class Main extends React.Component {
             for (const res of res1.concat(res2)) {
                 const source = document.createElement('source')
                 source.type = res.protocolInfo.split(':').find(type => type.includes('/'))
-                source.src = 'upnp-proxy/' + encodeURI(res.url.replace(/^\w+:\/\//, ''))
+                source.src = proxyURL(res.url)
                 this.audio.appendChild(source)
             }
             this.audio.load()
@@ -414,7 +377,7 @@ class Main extends React.Component {
                     value: '',
                     icon: <Avatar><SurroundSound /></Avatar>,
                 }].concat(renderers.map(dev => ({
-                    icon: dev.icons.length ? <Avatar src={ dev.icons[0].url } /> : <Avatar><SurroundSound /></Avatar>,
+                    icon: dev.icons.length ? <Avatar src={ proxyURL(dev.icons[0].url) } /> : <Avatar><SurroundSound /></Avatar>,
                     primary: dev.server,
                     secondary: dev.url.host,
                     value: dev.location,
@@ -722,7 +685,7 @@ class Main extends React.Component {
         </Browser>
     }
     renderBody() {
-        const { isDrawerOpen, isDrawerDocked, drawerWidth } = this.state
+        const { isDrawerDocked, drawerWidth } = this.state
         return <div style={{ marginLeft: isDrawerDocked ? drawerWidth : 0 }} className="body">
             <Switch>
                 <Route path="/browse/:host/(.*)"
@@ -738,7 +701,6 @@ class Main extends React.Component {
                     </List>
                 }>
                 </Route>
-                <Route render={ () => <Redirect to="/browse" /> } />
             </Switch>
         </div>
     }
@@ -774,7 +736,7 @@ class Main extends React.Component {
         await new Promise(resolve => setTimeout(resolve, 10))
 
         const img = document.createElement('img'),
-            src = 'upnp-proxy/' + encodeURI(url.replace(/^\w+:\/\//, ''))
+            src = proxyURL(url)
         await new Promise((onload, onerror) => Object.assign(img, { src, onload, onerror }))
         const vibrant = new Vibrant(img),
             swatches = await vibrant.getPalette(),
@@ -791,7 +753,7 @@ class Main extends React.Component {
         const { rendererLocation, playingTrack, playingTime, albumartSwatches } = this.state
         this.checkRenderLocationChange(rendererLocation)
         this.checkAlbumartChange(playingTrack.upnpAlbumArtURI)
-        return <div>
+        return <div style={{ paddingTop: 64 }}>
             { this.renderAppBar() }
             { this.renderDrawer() }
             { this.renderBody() }
@@ -806,4 +768,16 @@ class Main extends React.Component {
     }
 }
 
-ReactDOM.render(<HashRouter><Route component={ Main } /></HashRouter>, document.getElementById('app'))
+class Player extends React.Component {
+    render() {
+        return <div className="player">...</div>
+    }
+}
+
+ReactDOM.render(<HashRouter>
+    <Switch>
+        <Route path="/browse" component={ Main } />
+        <Route path="/playing" component={ Player } />
+        <Route render={ () => <Redirect to="/browse" /> } />
+    </Switch>
+</HashRouter>, document.getElementById('app'))
