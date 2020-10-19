@@ -1,28 +1,27 @@
 import * as React from 'react'
-import * as url from 'url'
 
-import List, {
-    ListItem, ListItemAvatar, ListItemIcon,
-    ListItemText, ListItemSecondaryAction
-} from 'material-ui/List'
-import ListSubheader from 'material-ui/List/ListSubheader'
-import Card, { CardMedia, CardContent, CardActions } from 'material-ui/Card'
-import { GridList, GridListTile, GridListTileBar } from 'material-ui/GridList'
-import IconButton from 'material-ui/IconButton'
-import Avatar from 'material-ui/Avatar'
-import Typography from 'material-ui/Typography'
-import Button from 'material-ui/Button'
-import Grid from 'material-ui/Grid'
-import { CircularProgress } from 'material-ui/Progress'
-import Menu, { MenuItem } from 'material-ui/Menu'
+import List from '@material-ui/core/List'
+import ListItem from '@material-ui/core/ListItem'
+import ListItemAvatar from '@material-ui/core/ListItemAvatar'
+import ListItemText from '@material-ui/core/ListItemText'
+import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 
-import Info from 'material-ui-icons/Info'
-import PlayArrow from 'material-ui-icons/PlayArrow'
-import Pause from 'material-ui-icons/Pause'
-import MoreVert from 'material-ui-icons/MoreVert'
-import Check from 'material-ui-icons/Check'
-import Close from 'material-ui-icons/Close'
-import CheckBoxOutlineBlank from 'material-ui-icons/CheckBoxOutlineBlank'
+import ListSubheader from '@material-ui/core/ListSubheader'
+import Card from '@material-ui/core/Card'
+import CardMedia from '@material-ui/core/CardMedia'
+import CardContent from '@material-ui/core/CardContent'
+import IconButton from '@material-ui/core/IconButton'
+import Avatar from '@material-ui/core/Avatar'
+import Typography from '@material-ui/core/Typography'
+import Grid from '@material-ui/core/Grid'
+import CircularProgress from '@material-ui/core/CircularProgress'
+import Menu from '@material-ui/core/Menu'
+import MenuItem from '@material-ui/core/MenuItem'
+
+import PlayArrow from '@material-ui/icons/PlayArrow'
+import Pause from '@material-ui/icons/Pause'
+import MoreVert from '@material-ui/icons/MoreVert'
+import Check from '@material-ui/icons/Check'
 
 import { debounce, hhmmss2sec, sec2mmss, cssStyleUrl, fetchJson, onChange } from '../common/utils'
 
@@ -128,6 +127,12 @@ export default class Browser extends React.Component {
         }
         this.props.onBeginSelectTracks(Object.values(selected))
     }
+    addToPlaylist() {
+        // TODO
+    }
+    createPlaylist() {
+        // TODO
+    }
 
     state = {
         hasMore: true,
@@ -156,7 +161,7 @@ export default class Browser extends React.Component {
                 </CardMedia>
                 <CardContent className="content">
                     <Typography onClick={ () => onSelectFolder(item.id) }
-                        className="title" title={ item.dcTitle } type="title">
+                        className="title" title={ item.dcTitle }>
                         { getTitleMain(item.dcTitle) || 'Untitled' }
                     </Typography>
                     <Typography className="sub">
@@ -194,7 +199,7 @@ export default class Browser extends React.Component {
                     backgroundImage: `url(${albumartURL(album.upnpAlbumArtURI)})`
                 }}></span>
                 <span className="title">
-                    <a href="javascript:void(0)"
+                    <a
                         onClick={ () => onSelectFolder(album.parentID) }
                         className="primary">{ album.upnpAlbum }</a>
                     <br />
@@ -209,8 +214,9 @@ export default class Browser extends React.Component {
                         item.id === playingTrack.id && 'playing',
                         isSelectingTracks && selected[item.id] && 'selected'
                     ].join(' ') }>
-                    <ListItemAvatar onClick={ () => this.beginSelectTrack(item) }>
-                        <Avatar style={{ backgroundColor: item.id === playingTrack.id ? albumartSwatches.DarkMuted : undefined }}>
+                    <ListItemAvatar>
+                        <Avatar onClick={ () => this.beginSelectTrack(item) }
+                            style={{ backgroundColor: item.id === playingTrack.id ? albumartSwatches.DarkMuted : undefined }}>
                         {
                             isSelectingTracks ? (selected[item.id] ? <Check /> : ' ') :
                             item.id === playingTrack.id && playingState.isPlaying ? <PlayArrow /> : 

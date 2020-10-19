@@ -1,14 +1,15 @@
 import * as React from 'react'
 
-import { onChange } from '../common/utils'
-import Dialog from 'material-ui/Dialog'
-import { DialogTitle } from 'material-ui/Dialog'
-import { DialogContent } from 'material-ui/Dialog'
-import List, { ListItem } from 'material-ui/List'
-import { ListItemText } from 'material-ui/List'
-import { DialogActions } from 'material-ui/Dialog'
-import Button from 'material-ui/Button'
+import Dialog from '@material-ui/core/Dialog'
+import DialogTitle from '@material-ui/core/DialogTitle'
+import DialogContent from '@material-ui/core/DialogContent'
+import List from '@material-ui/core/List'
+import ListItem from '@material-ui/core/ListItem'
+import ListItemText from '@material-ui/core/ListItemText'
+import DialogActions from '@material-ui/core/DialogActions'
+import Button from '@material-ui/core/Button'
 
+import { onChange } from '../common/utils'
 import { upnpBrowse } from './Browser.jsx'
 
 export default class PlaylistSelector extends React.Component {

@@ -1,12 +1,15 @@
 import * as React from 'react'
-import { Paper, IconButton } from 'material-ui'
+import Paper from '@material-ui/core/Paper'
+import IconButton from '@material-ui/core/IconButton'
 
-import { PlayCircleFilled, PauseCircleFilled } from 'material-ui-icons'
-import { hhmmss2sec, sec2mmss, cssStyleUrl, fetchJson } from '../common/utils'
+import PlayCircleFilled from '@material-ui/icons/PlayCircleFilled'
+import PauseCircleFilled from '@material-ui/icons/PauseCircleFilled'
+import { hhmmss2sec, sec2mmss, cssStyleUrl } from '../common/utils'
 
 import './Player.less'
 
 export default class Player extends React.Component {
+    /** @type { any } */
     tickTimeout = 0
     async onTick() {
         clearTimeout(this.tickTimeout)
@@ -33,7 +36,7 @@ export default class Player extends React.Component {
                 <div className="albumart" style={{ backgroundImage: `url(${backgroundImageUrl})` }}></div>
                 <div className="status">
                     <div className="content">
-                        <a href="javascript:void(0)" onClick={ () => this.props.onBrowsePlaying() }>
+                        <a onClick={ () => this.props.onBrowsePlaying() }>
                             { playingTrack.dcTitle } [{ sec2mmss(currentTime) } / { playingTrack.res ? playingTrack.res.duration : '--:--' }]
                         </a>
                         <span>

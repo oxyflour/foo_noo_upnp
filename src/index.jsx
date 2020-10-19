@@ -1,57 +1,55 @@
 import 'babel-polyfill'
-import * as url from 'url'
-import * as React from 'react'
-import * as ReactDOM from 'react-dom'
+import url from 'url'
+import React from 'react'
+import ReactDOM from 'react-dom'
+import io from 'socket.io-client'
 
-import AppBar from 'material-ui/AppBar'
-import Toolbar from 'material-ui/Toolbar'
-import Typography from 'material-ui/Typography'
-import Button from 'material-ui/Button'
-import List, { ListItem, ListItemIcon, ListItemText } from 'material-ui/List'
-import IconButton from 'material-ui/IconButton'
-import Drawer from 'material-ui/Drawer'
-import Divider from 'material-ui/Divider'
-import TextField from 'material-ui/TextField'
-import Dialog, { DialogContent, DialogActions, DialogTitle } from 'material-ui/Dialog'
-import Avatar from 'material-ui/Avatar'
-import Tooltip from 'material-ui/Tooltip'
+import AppBar from '@material-ui/core/AppBar'
+import Toolbar from '@material-ui/core/Toolbar'
+import Typography from '@material-ui/core/Typography'
+import Button from '@material-ui/core/Button'
+import List from '@material-ui/core/List'
+import ListItem from '@material-ui/core/ListItem'
+import ListItemIcon from '@material-ui/core/ListItemIcon'
+import ListItemText from '@material-ui/core/ListItemText'
+import IconButton from '@material-ui/core/IconButton'
+import Drawer from '@material-ui/core/Drawer'
+import Divider from '@material-ui/core/Divider'
+import TextField from '@material-ui/core/TextField'
+import Dialog from '@material-ui/core/Dialog'
+import DialogTitle from '@material-ui/core/DialogTitle'
+import Avatar from '@material-ui/core/Avatar'
+import Tooltip from '@material-ui/core/Tooltip'
 
-import Sort from 'material-ui-icons/Sort'
-import Refresh from 'material-ui-icons/Refresh'
-import Menu from 'material-ui-icons/Menu'
-import Search from 'material-ui-icons/Search'
-import MusicNote from 'material-ui-icons/MusicNote'
-import Close from 'material-ui-icons/Close'
-import LibraryMusic from 'material-ui-icons/LibraryMusic'
-import Phonelink from 'material-ui-icons/Phonelink'
-import SurroundSound from 'material-ui-icons/SurroundSound'
-import SkipPrevious from 'material-ui-icons/SkipPrevious'
-import SkipNext from 'material-ui-icons/SkipNext'
-import PlayCircleOutline from 'material-ui-icons/PlayCircleOutline'
-import PauseCircleOutline from 'material-ui-icons/PauseCircleOutline'
-import PlaylistPlay from 'material-ui-icons/PlaylistPlay'
-import PlaylistAdd from 'material-ui-icons/PlaylistAdd'
-import MoreVert from 'material-ui-icons/MoreVert'
-import VolumeUp from 'material-ui-icons/VolumeUp'
-import Delete from 'material-ui-icons/Delete'
-import SelectAll from 'material-ui-icons/SelectAll'
+import Sort from '@material-ui/icons/Sort'
+import Refresh from '@material-ui/icons/Refresh'
+import Menu from '@material-ui/icons/Menu'
+import Search from '@material-ui/icons/Search'
+import MusicNote from '@material-ui/icons/MusicNote'
+import Close from '@material-ui/icons/Close'
+import LibraryMusic from '@material-ui/icons/LibraryMusic'
+import Phonelink from '@material-ui/icons/Phonelink'
+import SurroundSound from '@material-ui/icons/SurroundSound'
+import SkipPrevious from '@material-ui/icons/SkipPrevious'
+import SkipNext from '@material-ui/icons/SkipNext'
+import PlayCircleOutline from '@material-ui/icons/PlayCircleOutline'
+import PauseCircleOutline from '@material-ui/icons/PauseCircleOutline'
+import PlaylistPlay from '@material-ui/icons/PlaylistPlay'
+import PlaylistAdd from '@material-ui/icons/PlaylistAdd'
+import MoreVert from '@material-ui/icons/MoreVert'
+import VolumeUp from '@material-ui/icons/VolumeUp'
+import Delete from '@material-ui/icons/Delete'
+import SelectAll from '@material-ui/icons/SelectAll'
 
 import { HashRouter, Route, Redirect, Switch } from 'react-router-dom'
 
 import './index.less'
 
 import Select from '../components/Select.jsx'
+import Playing from '../components/Playing.jsx'
 import PlaylistSelector from '../components/PlaylistSelector.jsx'
-import { default as Browser, getTitleMain, upnpBrowse } from '../components/Browser.jsx'
-import { fetchJson, debounce, hhmmss2sec, cssStyleUrl, onChange } from '../common/utils'
-
-function proxyURL(src) {
-    return 'upnp-proxy/' + encodeURI((src + '').replace(/^\w+:\/\//, ''))
-}
-
-function albumartURL(src) {
-    return cssStyleUrl(src ? proxyURL(src) : 'assets/thumbnail_default.png') 
-}
+import Browser, { getTitleMain, upnpBrowse } from '../components/Browser.jsx'
+import { fetchJson, debounce, hhmmss2sec, onChange, proxyURL, albumartURL } from '../common/utils'
 
 const SORT_DISPLAY_NAME = {
     'res@duration': 'Duration',
@@ -130,13 +128,14 @@ class Main extends React.Component {
 
     audio = new Audio()
     async startTimer() {
-        clearTimeout(this.audio.playTimer)
+        const audio = /** @type { { playTimer: any } } */(/** @type { any } */(this.audio))
+        clearTimeout(audio.playTimer)
         const playingTime = this.audio.currentTime
         this.setState({ playingTime })
         if (!this.audio.paused) {
             const rest = Math.floor(playingTime) + 1 - playingTime,
                 timeout = rest < 0.1 ? rest + 1 : rest
-            this.audio.playTimer = setTimeout(() => this.startTimer(), timeout * 1000)
+            audio.playTimer = setTimeout(() => this.startTimer(), timeout * 1000)
         }
     }
     async playNext(delta = 1) {
@@ -437,7 +436,7 @@ class Main extends React.Component {
             <IconButton onClick={ () => this.setState({ isDrawerOpen: !this.state.isDrawerOpen }) }>
                 <Menu />
             </IconButton>
-            <Typography className="title" type="title" style={{ flex: 1 }}>
+            <Typography className="title" style={{ flex: 1 }}>
                 { title }
             </Typography>
         </Toolbar>
@@ -468,7 +467,7 @@ class Main extends React.Component {
             pathSplit = path ? path.split('/') : [ ],
             folderName = pathSplit.slice(-1).pop() || 'Root'
         return isDrawerDocked ? <Toolbar>
-            <Typography className="title" type="title" style={{ flex: 1 }}>
+            <Typography className="title" style={{ flex: 1 }}>
                 {
                     [''].concat(pathSplit).map((dirname, index) => <span key={ index }>
                         { index > 0 && '/' }
@@ -511,7 +510,7 @@ class Main extends React.Component {
             <IconButton onClick={ () => this.setState({ isDrawerOpen: !this.state.isDrawerOpen }) }>
                 <Menu />
             </IconButton>
-            <Typography className="title" type="title" style={{ flex: 1 }}>
+            <Typography className="title" style={{ flex: 1 }}>
                 <Select title="Go to Directory"
                     value={ folderName }
                     onChange={
@@ -582,13 +581,17 @@ class Main extends React.Component {
             }
         </List>
     }
+    getFullPlayingPath() {
+        const { playingLocation, playingPath, browsers } = this.state,
+            { url } = browsers.find(dev => dev.location === playingLocation) || { }
+        return playingPath && `/browse/${url && url.host}/${playingPath}`
+    }
     renderDrawer() {
         const { isDrawerDocked, drawerWidth, isPlayerConfigShown, isUpdatingVolume } = this.state,
-            { albumartSwatches, browsers, preferType } = this.state,
-            { playingLocation, playingPath, playingTrack, playingState, playingVolume } = this.state,
+            { albumartSwatches, preferType } = this.state,
+            { playingTrack, playingState, playingVolume } = this.state,
             backgroundImageUrl = albumartURL(playingTrack.upnpAlbumArtURI),
-            { url } = browsers.find(dev => dev.location === playingLocation) || { },
-            playingPathName = `/browse/${url && url.host}/${playingPath}`
+            playingPathName = this.getFullPlayingPath()
         return <Drawer
                 className="drawer"
                 variant={ isDrawerDocked ? 'permanent' : 'temporary' }
@@ -738,7 +741,7 @@ class Main extends React.Component {
         const img = document.createElement('img'),
             src = proxyURL(url)
         await new Promise((onload, onerror) => Object.assign(img, { src, onload, onerror }))
-        const vibrant = new Vibrant(img),
+        const vibrant = new /** @type { any } */(window).Vibrant(img),
             swatches = await vibrant.getPalette(),
             albumartSwatches = { }
         for (const key in swatches) {
@@ -750,13 +753,25 @@ class Main extends React.Component {
     })
 
     render() {
-        const { rendererLocation, playingTrack, playingTime, albumartSwatches } = this.state
+        const { rendererLocation, playingTrack, playingState, playingTime, albumartSwatches } = this.state
         this.checkRenderLocationChange(rendererLocation)
         this.checkAlbumartChange(playingTrack.upnpAlbumArtURI)
-        return <div style={{ paddingTop: 64 }}>
-            { this.renderAppBar() }
-            { this.renderDrawer() }
-            { this.renderBody() }
+        return <div>
+            <Switch>
+                <Route path="/" exact render={ () =>
+                    <Redirect to="/browse" /> } />
+                <Route path="/playing" render={ () =>
+                    <Playing track={ playingTrack } state={ playingState } time={ playingTime }
+                        color={ albumartSwatches.Muted } dark={ albumartSwatches.DarkMuted }
+                        audio={ this.audio } playlistPath={ this.getFullPlayingPath() } /> } />
+                <Route path="/browse" render={ () =>
+                    <div style={{ paddingTop: 64 }}>
+                        { this.renderAppBar() }
+                        { this.renderDrawer() }
+                        { this.renderBody() }
+                    </div>
+                } />
+            </Switch>
             <div className="progress" style={{ backgroundColor: albumartSwatches.Muted || '#eee' }}>
                 <div className="bar" style={{
                     transform: `scaleX(${ (playingTrack.resList || [ ]).length ?
@@ -768,16 +783,4 @@ class Main extends React.Component {
     }
 }
 
-class Player extends React.Component {
-    render() {
-        return <div className="player">...</div>
-    }
-}
-
-ReactDOM.render(<HashRouter>
-    <Switch>
-        <Route path="/browse" component={ Main } />
-        <Route path="/playing" component={ Player } />
-        <Route render={ () => <Redirect to="/browse" /> } />
-    </Switch>
-</HashRouter>, document.getElementById('app'))
+ReactDOM.render(<HashRouter><Route component={ Main } /></HashRouter>, document.getElementById('app'))

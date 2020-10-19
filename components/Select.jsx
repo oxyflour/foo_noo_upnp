@@ -1,7 +1,10 @@
 import * as React from 'react'
-import List, { ListItem, ListItemIcon, ListItemText } from 'material-ui/List'
-import Dialog, { DialogTitle } from 'material-ui/Dialog'
-import Button from 'material-ui/Button'
+import List from '@material-ui/core/List'
+import ListItem from '@material-ui/core/ListItem'
+import ListItemIcon from '@material-ui/core/ListItemIcon'
+import ListItemText from '@material-ui/core/ListItemText'
+import Dialog from '@material-ui/core/Dialog'
+import DialogTitle from '@material-ui/core/DialogTitle'
 
 export default class Select extends React.Component {
     state = {

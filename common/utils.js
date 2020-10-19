@@ -35,13 +35,13 @@ function sec2mmss(sec) {
 
 function debounce(fn, time) {
     let timeout
-    return function() {
+    return function(...args) {
         if (timeout) {
             clearTimeout(timeout)
         }
         timeout = setTimeout(() => {
             timeout = 0
-            fn.apply(this, arguments)
+            fn.apply(this, args)
         }, time)
     }
 }
@@ -83,4 +83,12 @@ function onChange(fn, last) {
     }
 }
 
-module.exports = { qsSet, debounce, sec2mmss, hhmmss2sec, cssStyleUrl, fetchJson, onChange }
+function proxyURL(src) {
+    return 'upnp-proxy/' + encodeURI((src + '').replace(/^\w+:\/\//, ''))
+}
+
+function albumartURL(src) {
+    return cssStyleUrl(src ? proxyURL(src) : 'assets/thumbnail_default.png') 
+}
+
+module.exports = { qsSet, debounce, throttle, sec2mmss, hhmmss2sec, cssStyleUrl, fetchJson, onChange, proxyURL, albumartURL }
