@@ -28,6 +28,9 @@ module.exports = {
                 }
             },
         }, {
+            test: /\.css$/,
+            use: 'css-loader/locals'
+        }, {
             test: /\.less$/,
             use: [{
                 loader: "style-loader"

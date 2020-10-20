@@ -40,9 +40,11 @@ import MoreVert from '@material-ui/icons/MoreVert'
 import VolumeUp from '@material-ui/icons/VolumeUp'
 import Delete from '@material-ui/icons/Delete'
 import SelectAll from '@material-ui/icons/SelectAll'
+import AspectRatio from '@material-ui/icons/AspectRatio'
 
 import { HashRouter, Route, Redirect, Switch } from 'react-router-dom'
 
+import 'fontsource-roboto'
 import './index.less'
 
 import Select from '../components/Select.jsx'
@@ -600,9 +602,16 @@ class Main extends React.Component {
             <div className="player">
                 <div className="options">
                     {
-                        this.props.location.pathname !== playingPathName && <IconButton
+                        playingPathName && this.props.location.pathname !== playingPathName &&
+                        <IconButton
                             onClick={ () => this.props.history.push(playingPathName) }>
                             <PlaylistPlay />
+                        </IconButton>
+                    } {
+                        playingPathName && this.props.location.pathname === playingPathName &&
+                        <IconButton
+                            onClick={ () => Playing.getContext() && this.props.history.push('/playing') }>
+                            <AspectRatio />
                         </IconButton>
                     }
                     <IconButton onClick={ () => this.setState({ isPlayerConfigShown: true }) }>
@@ -756,14 +765,21 @@ class Main extends React.Component {
         const { rendererLocation, playingTrack, playingState, playingTime, albumartSwatches } = this.state
         this.checkRenderLocationChange(rendererLocation)
         this.checkAlbumartChange(playingTrack.upnpAlbumArtURI)
+        document.title = playingTrack.id ?
+            (playingState.isStopped ? `[Pause] ` : `[Play] `) + playingTrack.dcTitle :
+            (this.props.match.params[0] || '').split('/').pop() || 'foonoo'
         return <div>
             <Switch>
                 <Route path="/" exact render={ () =>
                     <Redirect to="/browse" /> } />
                 <Route path="/playing" render={ () =>
-                    <Playing track={ playingTrack } state={ playingState } time={ playingTime }
+                    <Playing
+                        track={ playingTrack } state={ playingState } time={ playingTime }
                         color={ albumartSwatches.Muted } dark={ albumartSwatches.DarkMuted }
-                        audio={ this.audio } playlistPath={ this.getFullPlayingPath() } /> } />
+                        audio={ this.audio } playlistPath={ this.getFullPlayingPath() }
+                        onPlayPrev={ () => this.playNext(-1) }
+                        onPlayNext={ () => this.playNext() }
+                        onPlayPause={ () => playingState.isPlaying ? this.pause() : this.play() } /> } />
                 <Route path="/browse" render={ () =>
                     <div style={{ paddingTop: 64 }}>
                         { this.renderAppBar() }
