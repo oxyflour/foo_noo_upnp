@@ -610,7 +610,13 @@ class Main extends React.Component {
                     } {
                         playingPathName && this.props.location.pathname === playingPathName &&
                         <IconButton
-                            onClick={ () => Playing.getContext() && this.props.history.push('/playing') }>
+                            onClick={
+                                () => {
+                                    Playing.getContext()
+                                    this.setState({ isDrawerOpen: false })
+                                    this.props.history.push('/playing')
+                                }
+                            }>
                             <AspectRatio />
                         </IconButton>
                     }
@@ -773,7 +779,7 @@ class Main extends React.Component {
                 <Route path="/" exact render={ () =>
                     <Redirect to="/browse" /> } />
                 <Route path="/playing" render={ () =>
-                    <Playing
+                    <Playing history={ this.props.history }
                         track={ playingTrack } state={ playingState } time={ playingTime }
                         color={ albumartSwatches.Muted } dark={ albumartSwatches.DarkMuted }
                         audio={ this.audio } playlistPath={ this.getFullPlayingPath() }

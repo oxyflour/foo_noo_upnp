@@ -2,7 +2,6 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 
 import IconButton from '@material-ui/core/IconButton'
-import SkipPrevious from '@material-ui/icons/SkipPrevious'
 import SkipNext from '@material-ui/icons/SkipNext'
 import PlayCircleOutline from '@material-ui/icons/PlayCircleOutline'
 import PauseCircleOutline from '@material-ui/icons/PauseCircleOutline'
@@ -59,16 +58,15 @@ export default class Playing extends React.Component {
         const update = () => {
             if (this.mounted) {
                 requestAnimationFrame(update)
-                this.update()
+                if (Playing.cachedContext) {
+                    this.update()
+                }
             }
         }
         requestAnimationFrame(update)
     }
     renderControl() {
         return <div className="control">
-            <IconButton onClick={ () => this.props.onPlayPrev() }>
-                <SkipPrevious style={{ width: 32, height: 32 }} />
-            </IconButton>
             <IconButton onClick={ () => this.props.onPlayPause() }>
             {
                 this.props.state.isPlaying ?
@@ -83,10 +81,10 @@ export default class Playing extends React.Component {
     }
     render() {
         const { track, time, audio } = this.props,
-            albumartSrc = track.upnpAlbumArtURI ? proxyURL(track.upnpAlbumArtURI) : 'assets/thumbnail_default.png',
-            { analyser, audioContext } = Playing.getContext()
-        if (audio && !audio.connectedElementSource) {
-            const source = audioContext.createMediaElementSource(audio)
+            albumartSrc = track.upnpAlbumArtURI ? proxyURL(track.upnpAlbumArtURI) : 'assets/thumbnail_default.png'
+        if (Playing.cachedContext && audio && !audio.connectedElementSource) {
+            const { analyser, audioContext } = Playing.getContext(),
+                source = audioContext.createMediaElementSource(audio)
             source.connect(analyser)
             source.connect(audioContext.destination)
             audio.connectedElementSource = source
@@ -99,36 +97,31 @@ export default class Playing extends React.Component {
         return <div>
             <div className="playing-bg" style={{ backgroundImage: `url(${cssStyleUrl(albumartSrc)})` }}></div>
             <div className="playing-main">
-            <div className="content">
-                <div className="title">
-                    <img className="album-art" src={ albumartSrc } />
-                    <div className="info">
-                        <Typography variant="h3" component="h1">
-                            <Link to={ this.props.playlistPath }>{ track.dcTitle || 'Not Playing' }</Link>
-                        </Typography>
-                        {
-                            track.id ?
+                <div className="content">
+                    <div className="title">
+                        <div className="album-art-control">
+                            { track.id && this.renderControl() }
+                            <div className="nav">
+                                <IconButton onClick={ () => this.props.history.push(this.props.playlistPath) }>
+                                    <PlaylistPlay />
+                                </IconButton>
+                            </div>
+                            <img className="album-art" src={ albumartSrc } />
+                        </div>
+                        <div className="info">
+                            <Typography variant="h3" component="h1">
+                                { track.dcTitle || 'Not Playing' }
+                            </Typography>
                             <div style={{ marginTop: 32 }}>
                                 <Typography variant="h5" component="h2">
-                                    { track.upnpArtist } - { track.upnpAlbum } [{ track.upnpOriginalTrackNumber }]
+                                    { track.upnpArtist || 'XX' } - { track.upnpAlbum || 'XXX' } [{ track.upnpOriginalTrackNumber || 1 }]
                                 </Typography>
-                                <p>{ sec2mmss(time) } / { track.resList[0].duration || '' }</p>
-                            </div> :
-                            <h3>
-                                {
-                                    this.props.playlistPath &&
-                                    <span style={{ marginRight: 32 }}>
-                                        <Link to={ this.props.playlistPath }>playlist</Link>
-                                    </span>
-                                }
-                                <Link to="/browse">browse</Link>
-                            </h3>
-                        }
-                        { track.id && this.renderControl() }
+                                <p>{ sec2mmss(time) } / { track.resList && track.resList[0].duration || '-:--' }</p>
+                            </div>
+                        </div>
                     </div>
+                    <canvas ref={ elem => this.canvasElem = elem } className="spectrum" />
                 </div>
-                <canvas ref={ elem => this.canvasElem = elem } className="spectrum" />
-            </div>
             </div>
         </div>
     }
