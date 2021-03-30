@@ -25,7 +25,7 @@
     "koa-static": "^4.0.1",
     "lame": "^1.2.4",
     "mkdirp-promise": "^5.0.1",
-    "netmask": "^1.0.6",
+    "netmask": "^2.0.1",
     "node-ssdp": "^3.2.1",
     "node-vibrant": "^3.0.0-alpha.2",
     "peer-upnp": "git+https://github.com/oxyflour/peer-upnp",
