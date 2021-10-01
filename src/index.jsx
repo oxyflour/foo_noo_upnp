@@ -465,7 +465,7 @@ class Main extends React.Component {
         </div>
     }
     renderBrowserToolbar(host, path) {
-        const { isDrawerDocked, isSearchShown, isSelectingTracks, searchKeyword, playlistToAddTrack } = this.state,
+        const { isDrawerDocked, isSearchShown, isSelectingTracks, searchKeyword } = this.state,
             pathSplit = path ? path.split('/') : [ ],
             folderName = pathSplit.slice(-1).pop() || 'Root'
         return isDrawerDocked ? <Toolbar>
@@ -542,7 +542,7 @@ class Main extends React.Component {
         </Toolbar>
     }
     renderBrowserTools(host, path) {
-        const { browsers, sortCaps, playlistToAddTrack } = this.state,
+        const { browsers, sortCaps } = this.state,
             { location } = browsers.find(dev => dev.url.host === host) || { },
             saveKey = `browser-sort-${location}-${path}`,
             sortCriteria = localStorage.getItem(saveKey) || ''
@@ -573,15 +573,17 @@ class Main extends React.Component {
                 <ListItemIcon><Refresh /></ListItemIcon>
                 <ListItemText primary="Refresh" />
             </ListItem>
-            {
-                playlistToAddTrack && <PlaylistSelector
-                    default={ path.replace(/(\/~)?\/$/, '').split('/').pop() }
-                    location={ location }
-                    path={ playlistToAddTrack }
-                    onChange={ playlistToAddTrack => this.setState({ playlistToAddTrack }) }
-                    onSelect={ path => this.addTracksToPlaylist(location, path) } />
-            }
         </List>
+    }
+    renderPlaylistSelector(host, path) {
+        const { browsers, playlistToAddTrack } = this.state,
+            { location } = browsers.find(dev => dev.url.host === host) || { }
+        return <PlaylistSelector
+            default={ path.replace(/(\/~)?\/$/, '').split('/').pop() }
+            location={ location }
+            path={ playlistToAddTrack }
+            onChange={ playlistToAddTrack => this.setState({ playlistToAddTrack }) }
+            onSelect={ path => this.addTracksToPlaylist(location, path) } />
     }
     getFullPlayingPath() {
         const { playingLocation, playingPath, browsers } = this.state,
@@ -703,8 +705,13 @@ class Main extends React.Component {
         </Browser>
     }
     renderBody() {
-        const { isDrawerDocked, drawerWidth } = this.state
+        const { isDrawerDocked, drawerWidth, playlistToAddTrack } = this.state
         return <div style={{ marginLeft: isDrawerDocked ? drawerWidth : 0 }} className="body">
+            {
+                playlistToAddTrack &&
+                <Route path="/browse/:host/(.*)"
+                    render={ props => this.renderPlaylistSelector(props.match.params.host, props.match.params[0]) } />
+            }
             <Switch>
                 <Route path="/browse/:host/(.*)"
                     render={ props => this.renderBrowser(props.match.params.host, props.match.params[0]) } />
