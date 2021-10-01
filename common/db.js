@@ -5,10 +5,11 @@ const mediaReference = { },
 let searchCache = { }
 
 function addMedia(item) {
-    const itemId = item.path.replace(/\\/g, '/') + '?' + item.subsong
+    const itemId = item.path.replace(/\\/g, '/') + '?' + item.subsong,
         id = mediaIdCache[item.path + '?' + item.filePath + '?' + item.subsong] = itemId,
-        path = id.split('/')
-    mediaListStore[id] = Object.assign({ type: 'item', id }, item)
+        path = id.split('/'),
+        dir = path.slice(0, -1).join('/')
+    mediaListStore[id] = Object.assign({ type: 'item', id, dir }, item)
     path.forEach((name, index) => {
         const dirPath = path.slice(0, index).join('/') || '0',
             dirRef = mediaReference[dirPath] || (mediaReference[dirPath] = { }),

@@ -78,7 +78,7 @@ export default class Browser extends React.Component {
             cacheKey = this.getCacheKey(),
             more = location ?
                 await upnpBrowse(location, browsePath || '0', begin, count,
-                    sortCriteria || '+upnp:Album,+upnp:originalTrackNumber',
+                    sortCriteria || '+dir,+upnp:Album,+upnp:originalTrackNumber',
                     searchKeyword) :
                 [ ],
             hasMore = more.length === count
